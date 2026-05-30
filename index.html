@@ -2,10 +2,13 @@
 <html lang="ru" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
     <title>MindVault Pro</title>
     <link rel="manifest" href="/mindvault/manifest.json">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3119/3119338.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MindVault">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script>
@@ -25,16 +28,32 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
         :root { --color-accent: #f43f5e; --color-accent-hover: #e11d48; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; transition: background-color 0.2s, color 0.2s; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; transition: background-color 0.2s, color 0.2s; font-size: 16px; }
+        /* Увеличиваем размер шрифта на iPhone */
+        @media (max-width: 768px) {
+            body { font-size: 15px; }
+            .text-xs { font-size: 0.75rem; }
+        }
         .custom-scroll::-webkit-scrollbar { width: 4px; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #52525b; border-radius: 10px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* Улучшенные кнопки действий */
+        .action-btn {
+            transition: all 0.2s ease;
+        }
+        .action-btn:active {
+            transform: scale(0.92);
+        }
+        /* Контейнер заметки с улучшенной структурой */
+        .note-card {
+            transition: all 0.2s ease;
+        }
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col justify-between overflow-x-hidden dark:bg-zinc-950 dark:text-zinc-100 light:bg-zinc-50 light:text-zinc-900">
 
-    <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 bg-zinc-800 border border-zinc-700 text-sm px-4 py-3 rounded-xl shadow-2xl opacity-0 translate-y-[-20px] transition-all duration-300 z-50 pointer-events-none flex items-center gap-2 text-white"></div>
+    <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 bg-zinc-800 border border-zinc-700 text-sm px-4 py-3 rounded-xl shadow-2xl opacity-0 translate-y-[-20px] transition-all duration-300 z-50 pointer-events-none flex items-center gap-2 text-white max-w-[90vw] text-center"></div>
 
     <main class="w-full max-w-md mx-auto px-4 pt-6 pb-24 flex-1 flex flex-col gap-4">
         
@@ -66,7 +85,7 @@
                 
                 <div class="flex items-center justify-between mt-3">
                     <span id="current-selected-label" class="text-[11px] font-semibold text-zinc-400">Категория: Все</span>
-                    <button onclick="saveNote()" id="btn-save-note" class="px-6 py-2 bg-accent hover:bg-accentHover rounded-xl text-xs font-bold text-white shadow-md transition-all active:scale-95">
+                    <button onclick="saveNote()" id="btn-save-note" class="px-6 py-2 bg-accent hover:bg-accentHover rounded-xl text-xs font-bold text-white shadow-md transition-all active:scale-95 action-btn">
                         Сохранить заметку
                     </button>
                 </div>
@@ -179,9 +198,23 @@
         let activeTab = "notes";
         let editingNoteId = null;
 
-        if ("Notification" in window && Notification.permission === "default") {
-            Notification.requestPermission();
+        // Запрашиваем разрешение на уведомления ТОЛЬКО после действия пользователя
+        function requestNotificationPermission() {
+            if (Notification.permission === 'default') {
+                Notification.requestPermission().then(perm => {
+                    console.log('Notification permission:', perm);
+                    if (perm === 'granted') {
+                        showToast("🔔 Уведомления разрешены!");
+                    }
+                });
+            }
         }
+
+        // Добавляем обработчик для запроса уведомлений при первом нажатии
+        document.addEventListener('click', function firstClickHandler() {
+            requestNotificationPermission();
+            document.removeEventListener('click', firstClickHandler);
+        });
 
         document.addEventListener("visibilitychange", () => {
             if (document.hidden) lockVaultAutomatically();
@@ -247,12 +280,22 @@
 
         function showNativeNotification(title, body) {
             if (Notification.permission === 'granted') {
-                if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+                if (navigator.serviceWorker && navigator.serviceWorker.controller) {
                     navigator.serviceWorker.ready.then(sw => {
-                        sw.showNotification(title, { body, icon: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png', badge: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png' });
+                        sw.showNotification(title, { 
+                            body: body, 
+                            icon: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png',
+                            badge: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png',
+                            vibrate: [200, 100, 200],
+                            silent: false
+                        });
                     });
                 } else {
-                    new Notification(title, { body, icon: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png' });
+                    // Fallback для обычного браузера
+                    new Notification(title, { 
+                        body: body, 
+                        icon: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png' 
+                    });
                 }
             }
         }
@@ -263,15 +306,26 @@
 
             if (delay <= 0) return;
 
-            setTimeout(() => {
+            // Сохраняем в localStorage для восстановления после перезагрузки
+            let reminders = JSON.parse(localStorage.getItem('mv_reminders') || '[]');
+            const reminderId = Date.now();
+            reminders.push({ text: noteText, time: targetDate.getTime(), id: reminderId });
+            localStorage.setItem('mv_reminders', JSON.stringify(reminders));
+
+            // Устанавливаем таймер (работает пока открыт браузер/приложение)
+            const timerId = setTimeout(() => {
                 if (Notification.permission === "granted") {
                     showNativeNotification("MindVault Pro: Напоминание! 🔔", noteText);
                 }
+                // Удаляем из localStorage после показа
+                let currentReminders = JSON.parse(localStorage.getItem('mv_reminders') || '[]');
+                currentReminders = currentReminders.filter(r => r.id !== reminderId);
+                localStorage.setItem('mv_reminders', JSON.stringify(currentReminders));
             }, delay);
-
-            let reminders = JSON.parse(localStorage.getItem('mv_reminders') || '[]');
-            reminders.push({ text: noteText, time: targetDate.getTime(), id: Date.now() });
-            localStorage.setItem('mv_reminders', JSON.stringify(reminders));
+            
+            // Сохраняем ID таймера в глобальный объект для возможности отмены
+            if (!window.reminderTimers) window.reminderTimers = {};
+            window.reminderTimers[reminderId] = timerId;
         }
 
         function restoreReminders() {
@@ -280,13 +334,16 @@
             reminders.forEach(r => {
                 if (r.time > now) {
                     const delay = r.time - now;
-                    setTimeout(() => {
+                    const timerId = setTimeout(() => {
                         if (Notification.permission === "granted") {
                             showNativeNotification("MindVault Pro: Напоминание! 🔔", r.text);
                         }
                     }, delay);
+                    if (!window.reminderTimers) window.reminderTimers = {};
+                    window.reminderTimers[r.id] = timerId;
                 }
             });
+            // Очищаем просроченные
             localStorage.setItem('mv_reminders', JSON.stringify(reminders.filter(r => r.time > now)));
         }
 
@@ -340,11 +397,13 @@
         }
 
         function deleteNote(id) {
-            if (editingNoteId === id) cancelEdit();
-            notes = notes.filter(n => n.id !== id);
-            localStorage.setItem('mv_notes', JSON.stringify(notes));
-            renderNotes();
-            showToast("Заметка удалена");
+            if (confirm("Удалить заметку без возможности восстановления?")) {
+                if (editingNoteId === id) cancelEdit();
+                notes = notes.filter(n => n.id !== id);
+                localStorage.setItem('mv_notes', JSON.stringify(notes));
+                renderNotes();
+                showToast("Заметка удалена");
+            }
         }
 
         function renderNotes() {
@@ -352,30 +411,38 @@
             const filtered = currentFilter === 'all' ? notes : notes.filter(n => n.category === currentFilter);
 
             if (filtered.length === 0) {
-                list.innerHTML = `<div class="text-center py-8 text-zinc-400 dark:text-zinc-600 text-xs">Раздел пуст.</div>`; return;
+                list.innerHTML = `<div class="text-center py-8 text-zinc-400 dark:text-zinc-600 text-sm">Раздел пуст.</div>`; return;
             }
 
             filtered.forEach(note => {
                 const isEditing = note.id === editingNoteId;
                 list.innerHTML += `
-                    <div class="bg-white dark:bg-zinc-900 border ${isEditing ? 'border-amber-500 ring-2 ring-amber-500/30' : 'border-zinc-200 dark:border-zinc-800/80'} rounded-xl p-3.5 flex flex-col gap-2 relative group shadow-sm">
-                        <div class="flex items-center justify-between">
-                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800">${note.category}</span>
-                            <span class="text-[10px] text-zinc-400 dark:text-zinc-600">${note.date}</span>
+                    <div class="note-card bg-white dark:bg-zinc-900 border ${isEditing ? 'border-amber-500 ring-2 ring-amber-500/30' : 'border-zinc-200 dark:border-zinc-800/80'} rounded-xl p-3.5 flex flex-col gap-2 relative shadow-sm">
+                        <div class="flex items-start justify-between">
+                            <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800">${note.category}</span>
+                            <div class="flex gap-3 ml-2">
+                                <button onclick="editNote(${note.id})" title="Редактировать" class="action-btn text-zinc-400 hover:text-amber-500 transition-colors p-1">
+                                    ✏️
+                                </button>
+                                <button onclick="deleteNote(${note.id})" title="Удалить" class="action-btn text-zinc-400 hover:text-accent transition-colors p-1">
+                                    🗑️
+                                </button>
+                            </div>
                         </div>
-                        <p class="text-xs text-zinc-800 dark:text-zinc-200 leading-relaxed break-words">${note.text}</p>
-                        ${note.reminder ? `<div class="flex items-center gap-1 text-[10px] font-semibold text-accent bg-accent/5 self-start px-2 py-0.5 rounded border border-accent/20">🔔 Напоминание: ${note.reminder}</div>` : ''}
-                        
-                        <div class="absolute top-3 right-3 flex gap-1">
-                            <button onclick="editNote(${note.id})" title="Редактировать" class="text-zinc-400 hover:text-amber-500 p-1">
-                                ✏️
-                            </button>
-                            <button onclick="deleteNote(${note.id})" title="Удалить" class="text-zinc-400 hover:text-accent p-1">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
-                            </button>
+                        <p class="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed break-words pr-2">${escapeHtml(note.text)}</p>
+                        <div class="flex items-center justify-between mt-1">
+                            ${note.reminder ? `<div class="flex items-center gap-1 text-[11px] font-semibold text-accent bg-accent/5 px-2 py-0.5 rounded border border-accent/20">🔔 ${note.reminder}</div>` : '<div></div>'}
+                            <span class="text-[11px] text-zinc-400 dark:text-zinc-500">${note.date}</span>
                         </div>
                     </div>`;
             });
+        }
+        
+        // Функция для экранирования HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         function filterNotes(cat, event) {
@@ -416,14 +483,15 @@
 
         function toggleFieldType(id) {
             const el = document.getElementById(id);
-            el.type = el.type === 'password' ? 'text' : 'password';
+            if (el) el.type = el.type === 'password' ? 'text' : 'password';
         }
 
         function generateSecurePassword() {
             const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()";
             let pass = "";
             for (let i = 0; i < 16; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
-            const el = document.getElementById('pw-value'); el.value = pass; el.type = 'text';
+            const el = document.getElementById('pw-value'); 
+            if (el) { el.value = pass; el.type = 'text'; }
             showToast("Надежный пароль создан! ⚡");
         }
 
@@ -452,40 +520,48 @@
         }
 
         function deletePassword(id) {
-            const bytes = CryptoJS.AES.decrypt(cryptData, currentMasterKey);
-            let list = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-            list = list.filter(p => p.id !== id);
-            cryptData = CryptoJS.AES.encrypt(JSON.stringify(list), currentMasterKey).toString();
-            localStorage.setItem('mv_vault', cryptData);
-            renderPasswords();
-            showToast("Запись удалена");
+            if (confirm("Удалить пароль без возможности восстановления?")) {
+                const bytes = CryptoJS.AES.decrypt(cryptData, currentMasterKey);
+                let list = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+                list = list.filter(p => p.id !== id);
+                cryptData = CryptoJS.AES.encrypt(JSON.stringify(list), currentMasterKey).toString();
+                localStorage.setItem('mv_vault', cryptData);
+                renderPasswords();
+                showToast("Запись удалена");
+            }
         }
 
         function renderPasswords() {
-            const list = document.getElementById('passwords-list'); list.innerHTML = "";
-            const bytes = CryptoJS.AES.decrypt(cryptData, currentMasterKey);
-            const decryptedList = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+            const list = document.getElementById('passwords-list'); 
+            if (!list) return;
+            list.innerHTML = "";
+            try {
+                const bytes = CryptoJS.AES.decrypt(cryptData, currentMasterKey);
+                const decryptedList = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
 
-            if (decryptedList.length === 0) { list.innerHTML = `<div class="text-center py-6 text-zinc-400 dark:text-zinc-600 text-xs">Хранилище пустое.</div>`; return; }
-            decryptedList.forEach(p => {
-                list.innerHTML += `
-                    <div class="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 flex flex-col gap-1.5 text-xs shadow-sm relative">
-                        <div class="flex justify-between items-start pr-8">
-                            <div>
-                                <div class="font-bold text-zinc-900 dark:text-zinc-200">${p.title}</div>
-                                <div class="text-zinc-500 dark:text-zinc-400 text-[11px]">${p.login ? `Логин: ${p.login}` : 'Логин отсутствует'}</div>
+                if (decryptedList.length === 0) { list.innerHTML = `<div class="text-center py-6 text-zinc-400 dark:text-zinc-600 text-sm">Хранилище пустое.</div>`; return; }
+                decryptedList.forEach(p => {
+                    list.innerHTML += `
+                        <div class="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 flex flex-col gap-1.5 text-sm shadow-sm relative">
+                            <div class="flex justify-between items-start pr-8">
+                                <div>
+                                    <div class="font-bold text-zinc-900 dark:text-zinc-200">${escapeHtml(p.title)}</div>
+                                    <div class="text-zinc-500 dark:text-zinc-400 text-xs">${p.login ? `Логин: ${escapeHtml(p.login)}` : 'Логин отсутствует'}</div>
+                                </div>
+                                <button onclick="navigator.clipboard.writeText('${p.val.replace(/'/g, "\\'")}'); showToast('Скопировано в буфер! 📋');" class="bg-crypto/10 text-crypto font-bold px-2 py-1 rounded text-[11px] hover:bg-crypto hover:text-white transition-colors">Копировать</button>
                             </div>
-                            <button onclick="navigator.clipboard.writeText('${p.val}'); showToast('Скопировано в буфер! 📋');" class="bg-crypto/10 text-crypto font-bold px-2 py-1 rounded text-[10px] hover:bg-crypto hover:text-white transition-colors">Скопировать</button>
-                        </div>
-                        <div class="flex items-center gap-2 mt-1 bg-white dark:bg-zinc-900 p-2 rounded-lg border border-zinc-200 dark:border-zinc-850">
-                            <input type="password" id="hide-pw-${p.id}" value="${p.val}" readonly class="bg-transparent font-mono text-crypto outline-none w-full border-none p-0 text-xs">
-                            <button onclick="toggleFieldType('hide-pw-${p.id}')" class="text-zinc-400 hover:text-zinc-200 px-1">👁️</button>
-                        </div>
-                        <button onclick="deletePassword(${p.id})" class="absolute top-3 right-2 text-zinc-400 hover:text-accent p-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
-                        </button>
-                    </div>`;
-            });
+                            <div class="flex items-center gap-2 mt-1 bg-white dark:bg-zinc-900 p-2 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                                <input type="password" id="hide-pw-${p.id}" value="${p.val.replace(/'/g, "\\'")}" readonly class="bg-transparent font-mono text-crypto outline-none w-full border-none p-0 text-sm">
+                                <button onclick="toggleFieldType('hide-pw-${p.id}')" class="text-zinc-400 hover:text-zinc-200 px-1">👁️</button>
+                            </div>
+                            <button onclick="deletePassword(${p.id})" class="absolute top-3 right-2 text-zinc-400 hover:text-accent p-1">
+                                🗑️
+                            </button>
+                        </div>`;
+                });
+            } catch(e) {
+                list.innerHTML = `<div class="text-center py-6 text-red-400 text-sm">Ошибка расшифровки</div>`;
+            }
         }
 
         function toggleTheme() {
@@ -521,14 +597,17 @@
         }
 
         function updateTabStyles() {
-            document.getElementById('nav-notes').className = 'flex flex-col items-center gap-1 text-zinc-400';
-            document.getElementById('nav-crypto').className = 'flex flex-col items-center gap-1 text-zinc-400';
-            document.getElementById('nav-settings').className = 'flex flex-col items-center gap-1 text-zinc-400';
+            const navNotes = document.getElementById('nav-notes');
+            const navCrypto = document.getElementById('nav-crypto');
+            const navSettings = document.getElementById('nav-settings');
+            
+            if (navNotes) navNotes.className = 'flex flex-col items-center gap-1 text-zinc-400';
+            if (navCrypto) navCrypto.className = 'flex flex-col items-center gap-1 text-zinc-400';
+            if (navSettings) navSettings.className = 'flex flex-col items-center gap-1 text-zinc-400';
 
-            const activeBtn = document.getElementById(`nav-${activeTab}`);
-            if (activeTab === 'notes') activeBtn.className = 'flex flex-col items-center gap-1 text-accent';
-            else if (activeTab === 'crypto') activeBtn.className = 'flex flex-col items-center gap-1 text-crypto';
-            else activeBtn.className = 'flex flex-col items-center gap-1 text-zinc-500 dark:text-white';
+            if (activeTab === 'notes' && navNotes) navNotes.className = 'flex flex-col items-center gap-1 text-accent';
+            else if (activeTab === 'crypto' && navCrypto) navCrypto.className = 'flex flex-col items-center gap-1 text-crypto';
+            else if (activeTab === 'settings' && navSettings) navSettings.className = 'flex flex-col items-center gap-1 text-zinc-500 dark:text-white';
 
             const activeFilterBtn = document.querySelector('.note-tab-btn.active');
             if (activeFilterBtn) activeFilterBtn.style.backgroundColor = 'var(--color-accent)';
@@ -562,15 +641,23 @@
         }
 
         function showToast(msg) {
-            const t = document.getElementById('toast'); t.textContent = msg;
-            t.className = "fixed top-5 left-1/2 -translate-x-1/2 bg-zinc-800/95 border border-zinc-700 text-sm px-4 py-3 rounded-xl shadow-2xl opacity-100 translate-y-0 transition-all duration-300 z-50 pointer-events-none flex items-center gap-2 text-white";
-            setTimeout(() => { t.className = "fixed top-5 left-1/2 -translate-x-1/2 bg-zinc-800/95 border border-zinc-700 text-sm px-4 py-3 rounded-xl shadow-2xl opacity-0 translate-y-[-20px] transition-all duration-300 z-50 pointer-events-none flex items-center gap-2 text-white"; }, 2500);
+            const t = document.getElementById('toast'); 
+            if (!t) return;
+            t.textContent = msg;
+            t.className = "fixed top-5 left-1/2 -translate-x-1/2 bg-zinc-800/95 border border-zinc-700 text-sm px-4 py-3 rounded-xl shadow-2xl opacity-100 translate-y-0 transition-all duration-300 z-50 pointer-events-none flex items-center gap-2 text-white max-w-[90vw] text-center";
+            setTimeout(() => { t.className = "fixed top-5 left-1/2 -translate-x-1/2 bg-zinc-800/95 border border-zinc-700 text-sm px-4 py-3 rounded-xl shadow-2xl opacity-0 translate-y-[-20px] transition-all duration-300 z-50 pointer-events-none flex items-center gap-2 text-white max-w-[90vw] text-center"; }, 2500);
         }
 
         // Регистрация Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/mindvault/sw.js')
-                .then(() => console.log('SW registered'))
+                .then(reg => {
+                    console.log('SW registered:', reg);
+                    // Проверяем поддержку push
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        console.log('Notifications supported');
+                    }
+                })
                 .catch(err => console.log('SW error:', err));
         }
 
@@ -579,10 +666,11 @@
             restoreReminders();
             if (localStorage.getItem('mv_theme') === 'light') {
                 document.documentElement.classList.remove('dark'); document.documentElement.classList.add('light');
-                document.getElementById('theme-toggle-btn').textContent = "🌙 Тёмная тема";
+                const themeBtn = document.getElementById('theme-toggle-btn');
+                if (themeBtn) themeBtn.textContent = "🌙 Тёмная тема";
             }
             const savedAccent = localStorage.getItem('mv_accent') || '#f43f5e';
-            const targetBtn = Array.from(document.querySelectorAll('.color-pick-btn')).find(b => b.getAttribute('onclick').includes(savedAccent));
+            const targetBtn = Array.from(document.querySelectorAll('.color-pick-btn')).find(b => b.getAttribute('onclick') && b.getAttribute('onclick').includes(savedAccent));
             setAccentColor(savedAccent, localStorage.getItem('mv_accent_hover') || '#e11d48', targetBtn);
             updateTabStyles();
         });
