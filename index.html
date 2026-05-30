@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MindVault Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: { extend: { colors: { accent: 'var(--color-accent, #f43f5e)', accentHover: 'var(--color-accent-hover, #e11d48)', crypto: '#06b6d4' } } }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        :root { --color-accent: #f43f5e; --color-accent-hover: #e11d48; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; transition: background-color 0.2s, color 0.2s; }
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #52525b; border-radius: 10px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col justify-between overflow-x-hidden dark:bg-zinc-950 dark:text-zinc-100 light:bg-zinc-50 light:text-zinc-900">
+
+    <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 bg-zinc-800 border border-zinc-700 text-sm px-4 py-3 rounded-xl shadow-2xl opacity-0 translate-y-[-20px] transition-all duration-300 z-50 pointer-events-none text-white flex items-center"></div>
+
+    <div id="photo-modal" onclick="closePhotoModal()" class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4">
+        <img id="modal-img" src="" class="max-w-full max-h-full rounded-lg shadow-2xl object-contain">
+    </div>
+
+    <main class="w-full max-w-md mx-auto px-4 pt-6 pb-24 flex-1 flex flex-col gap-4">
+        
+        <header class="flex items-center justify-between my-1">
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">MindVault <span class="text-accent">Pro</span></h1>
+                <p class="text-xs text-zinc-500 dark:text-zinc-400">Приватный органайзер + Фоновые Пуши</p>
+            </div>
+            <span id="sw-status" class="text-[10px] font-bold px-2 py-1 rounded-md bg-zinc-200 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border border-zinc-300 dark:border-zinc-800">Push: Off</span>
+        </header>
+
+        <section id="section-notes" class="flex flex-col gap-4">
+            
+            <div id="edit-indicator" class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-center justify-between hidden">
+                <span class="text-xs font-semibold text-amber-500">✏️ Режим изменения заметки</span>
+                <button onclick="cancelEdit()" class="text-[10px] bg-amber-500/20 text-amber-500 px-2 py-0.5 rounded">Отмена</button>
+            </div>
+
+            <div class="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+                <button onclick="filterNotes('all', event)" class="note-tab-btn active px-3 py-1.5 rounded-lg bg-accent text-white font-medium whitespace-nowrap shadow-sm">Все</button>
+                <button onclick="filterNotes('💡 Мысли', event)" class="note-tab-btn px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 font-medium whitespace-nowrap shadow-sm">💡 Мысли</button>
+                <button onclick="filterNotes('📅 Задачи', event)" class="note-tab-btn px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 font-medium whitespace-nowrap shadow-sm">📅 Задачи</button>
+                <button onclick="filterNotes('💼 Работа', event)" class="note-tab-btn px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 font-medium whitespace-nowrap shadow-sm">💼 Работа</button>
+                <button onclick="filterNotes('🛒 Покупки', event)" class="note-tab-btn px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 font-medium whitespace-nowrap shadow-sm">🛒 Покупки</button>
+            </div>
+            
+            <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-md dark:shadow-xl">
+                <textarea id="note-input" class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-sm text-zinc-900 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-accent transition-colors h-24 resize-none" placeholder="Напишите мысль... (например: в субботу в 15:00 тест пушей)"></textarea>
+                
+                <div id="image-preview-container" class="hidden relative mt-2 w-20 h-20 border border-zinc-300 dark:border-zinc-700 rounded-xl overflow-hidden">
+                    <img id="image-preview" class="w-full h-full object-cover">
+                    <button onclick="clearAttachedImage()" class="absolute top-0 right-0 bg-black/70 text-white rounded-bl-xl p-1 text-[10px] w-6 h-6 flex items-center justify-center">✕</button>
+                </div>
+
+                <div class="flex items-center justify-between mt-3 gap-2">
+                    <label class="cursor-pointer flex items-center gap-1.5 px-3 py-2 bg-zinc-100 dark:bg-zinc-950 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-semibold text-zinc-600 dark:text-zinc-300 transition-colors">
+                        <span>📷 Фото / Скриншот</span>
+                        <input type="file" id="note-image-input" accept="image/*" class="hidden" onchange="previewImage(this)">
+                    </label>
+
+                    <button onclick="saveNote()" id="btn-save-note" class="px-5 py-2 bg-accent hover:bg-accentHover rounded-xl text-xs font-bold text-white shadow-md transition-all active:scale-95">
+                        Сохранить
+                    </button>
+                </div>
+            </div>
+
+            <div id="notes-list" class="flex flex-col gap-3 max-h-[44vh] overflow-y-auto custom-scroll pr-1"></div>
+        </section>
+
+        <section id="section-crypto" class="flex flex-col gap-4 hidden">
+            <div id="crypto-auth" class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 text-center shadow-xl">
+                <div class="w-12 h-12 rounded-full bg-crypto/10 text-crypto flex items-center justify-center mx-auto mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </div>
+                <h3 class="text-sm font-bold text-zinc-900 dark:text-white">Зашифрованный Сейф</h3>
+                <input type="password" id="master-password" class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-center text-sm tracking-widest focus:outline-none focus:border-crypto mb-3" placeholder="••••••••">
+                <button onclick="unlockVault()" class="w-full py-2.5 bg-crypto hover:bg-cyan-600 rounded-xl text-xs font-bold text-white shadow-lg">Открыть сейф</button>
+            </div>
+
+            <div id="crypto-content" class="flex flex-col gap-4 hidden">
+                <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xl">
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <input type="text" id="pw-title" class="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs text-zinc-900 dark:text-zinc-200 focus:outline-none" placeholder="Ресурс">
+                        <input type="text" id="pw-login" class="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs text-zinc-900 dark:text-zinc-200 focus:outline-none" placeholder="Логин">
+                    </div>
+                    <div class="relative mb-3 flex gap-1.5">
+                        <div class="relative flex-1">
+                            <input type="password" id="pw-value" class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-3 pr-10 py-2.5 text-xs focus:outline-none" placeholder="Пароль">
+                            <button onclick="toggleFieldType('pw-value')" class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400">👁️</button>
+                        </div>
+                        <button onclick="generateSecurePassword()" class="px-2.5 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs hover:text-crypto">⚡</button>
+                        <button onclick="pasteFromClipboard()" class="px-2.5 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs hover:text-crypto">📋</button>
+                    </div>
+                    <button onclick="savePassword()" class="w-full py-2 bg-crypto hover:bg-cyan-600 rounded-xl text-xs font-bold text-white">Зашифровать и сохранить</button>
+                </div>
+                <div id="passwords-list" class="flex flex-col gap-2 max-h-[35vh] overflow-y-auto custom-scroll pr-1"></div>
+            </div>
+        </section>
+
+        <section id="section-settings" class="flex flex-col gap-4 hidden">
+            <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xl flex flex-col gap-4">
+                <h3 class="text-sm font-bold border-b border-zinc-200 dark:border-zinc-800 pb-2">Внешний вид</h3>
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-semibold">Основная тема</span>
+                    <button onclick="toggleTheme()" id="theme-toggle-btn" class="px-3 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-xl font-bold">☀️ Светлая тема</button>
+                </div>
+
+                <div class="flex flex-col gap-2 text-xs pt-1">
+                    <span class="font-semibold">Цветовой акцент</span>
+                    <div class="flex gap-4 mt-1" id="accent-colors-container">
+                        <button onclick="setAccentColor('#f43f5e', '#e11d48', this)" class="color-pick-btn w-8 h-8 rounded-full bg-[#f43f5e] border-2 border-zinc-300 dark:border-zinc-700 transition-all shadow-md active:scale-90"></button>
+                        <button onclick="setAccentColor('#3b82f6', '#2563eb', this)" class="color-pick-btn w-8 h-8 rounded-full bg-[#3b82f6] border-2 border-zinc-300 dark:border-zinc-700 transition-all shadow-md active:scale-90"></button>
+                        <button onclick="setAccentColor('#10b981', '#059669', this)" class="color-pick-btn w-8 h-8 rounded-full bg-[#10b981] border-2 border-zinc-300 dark:border-zinc-700 transition-all shadow-md active:scale-90"></button>
+                        <button onclick="setAccentColor('#a855f7', '#9333ea', this)" class="color-pick-btn w-8 h-8 rounded-full bg-[#a855f7] border-2 border-zinc-300 dark:border-zinc-700 transition-all shadow-md active:scale-90"></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3">
+                <h3 class="text-sm font-bold border-b border-zinc-200 dark:border-zinc-800 pb-2">Защищенный бэкап</h3>
+                <div class="flex gap-2 text-xs">
+                    <button onclick="exportDataEncrypted()" class="flex-1 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 font-bold rounded-xl">📦 Экспорт</button>
+                    <button onclick="importDataEncrypted()" class="flex-1 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 font-bold rounded-xl">📥 Импорт</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800 py-2.5 z-40">
+        <div class="max-w-md mx-auto flex justify-around items-center px-4">
+            <button onclick="switchTab('notes')" id="nav-notes" class="flex flex-col items-center gap-1 text-accent"><span class="text-[10px] font-bold">Заметки</span></button>
+            <button onclick="switchTab('crypto')" id="nav-crypto" class="flex flex-col items-center gap-1 text-zinc-400"><span class="text-[10px] font-bold">Сейф</span></button>
+            <button onclick="switchTab('settings')" id="nav-settings" class="flex flex-col items-center gap-1 text-zinc-400"><span class="text-[10px] font-bold">Опции</span></button>
+        </div>
+    </nav>
+
+    <script>
+        let notes = JSON.parse(localStorage.getItem('mv_notes')) || [];
+        let cryptData = localStorage.getItem('mv_vault') || null; 
+        let currentMasterKey = ""; let currentFilter = "all"; let activeTab = "notes";
+        let editingNoteId = null; let attachedImageBase64 = null;
+        let swRegistration = null;
+
+        // РЕГИСТРАЦИЯ SERVICE WORKER ДЛЯ НАДЕЖНЫХ ПУШЕЙ
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').then(reg => {
+                swRegistration = reg;
+                document.getElementById('sw-status').textContent = "Push: Active";
+                document.getElementById('sw-status').className = "text-[10px] font-bold px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20";
+                
+                if (Notification.permission === "default") Notification.requestPermission();
+            }).catch(err => {
+                console.log("SW Error", err);
+            });
+        }
+
+        document.addEventListener("visibilitychange", () => { if (document.hidden) lockVaultAutomatically(); });
+
+        function lockVaultAutomatically() {
+            currentMasterKey = "";
+            document.getElementById('crypto-content').classList.add('hidden');
+            document.getElementById('crypto-auth').classList.remove('hidden');
+            document.getElementById('master-password').value = "";
+        }
+
+        // Логика картинок
+        function previewImage(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                attachedImageBase64 = e.target.result;
+                document.getElementById('image-preview').src = attachedImageBase64;
+                document.getElementById('image-preview-container').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearAttachedImage() {
+            attachedImageBase64 = null;
+            document.getElementById('note-image-input').value = "";
+            document.getElementById('image-preview-container').classList.add('hidden');
+        }
+
+        function openPhotoModal(src) {
+            document.getElementById('modal-img').src = src;
+            document.getElementById('photo-modal').classList.remove('hidden');
+        }
+        function closePhotoModal() { document.getElementById('photo-modal').classList.add('hidden'); }
+
+        // Парсер Дат
+        function parseReminderDate(text) {
+            const cleanText = text.toLowerCase();
+            let matchedDate = new Date(); let hasDate = false;
+            const timeRegex = /(\d{2})[:.-](\d{2})/; const timeMatch = cleanText.match(timeRegex);
+
+            if (cleanText.includes('сегодня')) { hasDate = true; }
+            else if (cleanText.includes('завтра')) { matchedDate.setDate(matchedDate.getDate() + 1); hasDate = true; }
+            else if (cleanText.includes('послезавтра')) { matchedDate.setDate(matchedDate.getDate() + 2); hasDate = true; }
+            else {
+                const days = ['воскресень', 'понедельник', 'вторник', 'сред', 'четверг', 'пятниц', 'суббот'];
+                for (let i = 0; i < 7; i++) {
+                    if (cleanText.includes(days[i])) {
+                        const currentDay = matchedDate.getDay(); let distance = i - currentDay;
+                        if (distance <= 0) distance += 7;
+                        matchedDate.setDate(matchedDate.getDate() + distance); hasDate = true; break;
+                    }
+                }
+            }
+            const hardDateMatch = text.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+            const shortDateMatch = text.match(/(\d{2})\.(\d{2})/);
+            if (hardDateMatch) { matchedDate = new Date(hardDateMatch[3], hardDateMatch[2] - 1, hardDateMatch[1]); hasDate = true; }
+            else if (shortDateMatch) { matchedDate = new Date(matchedDate.getFullYear(), shortDateMatch[2] - 1, shortDateMatch[1]); hasDate = true; }
+
+            if (!hasDate) return null;
+            if (timeMatch) matchedDate.setHours(parseInt(timeMatch[1]), parseInt(timeMatch[2]), 0, 0);
+            else matchedDate.setHours(12, 0, 0, 0);
+            return matchedDate;
+        }
+
+        // Передача задачи на уведомление в Service Worker (Notification Triggers)
+        function sendToServiceWorker(noteText, timestamp) {
+            if (navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    action: 'schedule-notification',
+                    text: noteText,
+                    time: timestamp
+                });
+            }
+        }
+
+        function saveNote() {
+            const text = document.getElementById('note-input').value.trim();
+            if (!text && !attachedImageBase64) { showToast("Заметка пустая!"); return; }
+
+            let activeCategory = currentFilter === 'all' ? '💡 Мысли' : currentFilter;
+            const parsedDateObj = parseReminderDate(text);
+            const reminderText = parsedDateObj ? parsedDateObj.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : null;
+
+            if (editingNoteId !== null) {
+                notes = notes.map(n => n.id === editingNoteId ? { ...n, text, category: activeCategory, reminder: reminderText, image: attachedImageBase64 || n.image } : n);
+                showToast("Изменения сохранены! ✏️");
+                cancelEdit();
+            } else {
+                const newNote = { id: Date.now(), text, category: activeCategory, date: new Date().toLocaleDateString('ru-RU'), reminder: reminderText, image: attachedImageBase64 };
+                notes.unshift(newNote);
+                showToast(reminderText ? `Напоминание взведено фоном на ${reminderText} 🔔` : "Сохранено!");
+            }
+
+            if (parsedDateObj) {
+                sendToServiceWorker(text || "Посмотри вложение в приложении", parsedDateObj.getTime());
+            }
+
+            localStorage.setItem('mv_notes', JSON.stringify(notes));
+            document.getElementById('note-input').value = "";
+            clearAttachedImage();
+            renderNotes();
+        }
+
+        function editNote(id) {
+            const note = notes.find(n => n.id === id); if (!note) return;
+            editingNoteId = id;
+            document.getElementById('note-input').value = note.text;
+            if (note.image) {
+                attachedImageBase64 = note.image;
+                document.getElementById('image-preview').src = attachedImageBase64;
+                document.getElementById('image-preview-container').classList.remove('hidden');
+            } else { clearAttachedImage(); }
+            document.getElementById('edit-indicator').classList.remove('hidden');
+            document.getElementById('btn-save-note').textContent = "Применить";
+        }
+
+        function cancelEdit() {
+            editingNoteId = null; document.getElementById('note-input').value = "";
+            document.getElementById('edit-indicator').classList.add('hidden');
+            document.getElementById('btn-save-note').textContent = "Сохранить";
+            clearAttachedImage();
+        }
+
+        function deleteNote(id) {
+            if (editingNoteId === id) cancelEdit();
+            notes = notes.filter(n => n.id !== id);
+            localStorage.setItem('mv_notes', JSON.stringify(notes));
+            renderNotes();
+        }
+
+        function renderNotes() {
+            const list = document.getElementById('notes-list'); list.innerHTML = "";
+            const filtered = currentFilter === 'all' ? notes : notes.filter(n => n.category === currentFilter);
+
+            if (filtered.length === 0) { list.innerHTML = `<div class="text-center py-8 text-zinc-400 text-xs">Раздел пуст.</div>`; return; }
+
+            filtered.forEach(note => {
+                const isEditing = note.id === editingNoteId;
+                list.innerHTML += `
+                    <div class="bg-white dark:bg-zinc-900 border ${isEditing ? 'border-amber-500 ring-2' : 'border-zinc-200 dark:border-zinc-800/80'} rounded-xl p-3.5 flex flex-col gap-2 relative shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-950 text-zinc-500 border border-zinc-200 dark:border-zinc-800">${note.category}</span>
+                            <span class="text-[10px] text-zinc-400">${note.date}</span>
+                        </div>
+                        ${note.image ? `<img src="${note.image}" onclick="openPhotoModal('${note.image}')" class="w-full h-32 object-cover rounded-lg cursor-zoom-in my-1 border border-zinc-200 dark:border-zinc-800">` : ''}
+                        <p class="text-xs text-zinc-800 dark:text-zinc-200 leading-relaxed break-words">${note.text}</p>
+                        ${note.reminder ? `<div class="text-[10px] font-semibold text-accent bg-accent/5 self-start px-2 py-0.5 rounded border border-accent/20">🔔 ${note.reminder} (Фон)</div>` : ''}
+                        <div class="absolute top-3 right-3 flex gap-1">
+                            <button onclick="editNote(${note.id})" class="text-zinc-400 hover:text-amber-500 px-1 text-xs">✏️</button>
+                            <button onclick="deleteNote(${note.id})" class="text-zinc-400 hover:text-accent px-1 text-xs">✕</button>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function filterNotes(cat, event) {
+            currentFilter = cat;
+            document.querySelectorAll('.note-tab-btn').forEach(btn => {
+                btn.className = 'note-tab-btn px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 font-medium whitespace-nowrap shadow-sm';
+                btn.style.backgroundColor = '';
+            });
+            event.target.className = 'note-tab-btn active px-3 py-1.5 rounded-lg text-white font-medium whitespace-nowrap shadow-sm';
+            event.target.style.backgroundColor = 'var(--color-accent)';
+            renderNotes();
+        }
+
+        // СЕЙФ И НАСТРОЙКИ (БЕЗ ИЗМЕНЕНИЙ СТРУКТУРЫ)
+        function unlockVault() {
+            const pass = document.getElementById('master-password').value; if (!pass) return; currentMasterKey = pass;
+            if (cryptData) {
+                try { const bytes = CryptoJS.AES.decrypt(cryptData, currentMasterKey); if (!bytes.toString(CryptoJS.enc.Utf8)) throw new Error(); } 
+                catch (e) { showToast("Неверный пароль!"); currentMasterKey = ""; return; }
+            } else { cryptData = CryptoJS.AES.encrypt(JSON.stringify([]), currentMasterKey).toString(); localStorage.setItem('mv_vault', cryptData); }
+            document.getElementById('crypto-auth').classList.add('hidden'); document.getElementById('crypto-content').classList.remove('hidden'); renderPasswords();
+        }
+        function toggleFieldType(id) { const el = document.getElementById(id); el.type = el.type === 'password' ? 'text' : 'password'; }
+        function generateSecurePassword() { const chars = "abcdefg123456!@#"; let pass = ""; for (let i = 0; i < 12; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length)); document.getElementById('pw-value').value = pass; }
+        async function pasteFromClipboard() { try { const text = await navigator.clipboard.readText(); document.getElementById('pw-value').value = text; } catch(e){} }
+        function savePassword() {
+            const title = document.getElementById('pw-title').value; const val = document.getElementById('pw-value').value; if(!title || !val) return;
+            const bytes = CryptoJS.AES.decrypt(cryptData, currentMasterKey); let list = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+            list.push({ id: Date.now(), title, val }); cryptData = CryptoJS.AES.encrypt(JSON.stringify(list), currentMasterKey).toString();
+            localStorage.setItem('mv_vault', cryptData); renderPasswords();
+        }
+        function renderPasswords() {
+            const list = document.getElementById('passwords-list'); list.innerHTML = "";
+            const bytes = CryptoJS.AES.decrypt(cryptData, currentMasterKey); const decryptedList = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+            decryptedList.forEach(p => {
+                list.innerHTML += `<div class="bg-zinc-100 dark:bg-zinc-950 p-2 text-xs flex justify-between rounded-xl"><span>${p.title}</span><button onclick="navigator.clipboard.writeText('${p.val}')" class="text-crypto">Копировать</button></div>`;
+            });
+        }
+        function toggleTheme() {
+            const html = document.documentElement;
+            if (html.classList.contains('light')) { html.classList.remove('light'); html.classList.add('dark'); } 
+            else { html.classList.remove('dark'); html.classList.add('light'); }
+        }
+
+        function setAccentColor(primary, hover, element) {
+            document.documentElement.style.setProperty('--color-accent', primary);
+            document.documentElement.style.setProperty('--color-accent-hover', hover);
+            localStorage.setItem('mv_accent', primary);
+            
+            document.querySelectorAll('.color-pick-btn').forEach(b => {
+                b.className = "color-pick-btn w-8 h-8 rounded-full border-2 border-zinc-300 dark:border-zinc-700 transition-all shadow-md active:scale-90";
+            });
+            if(element) {
+                element.className = "color-pick-btn w-8 h-8 rounded-full border-2 border-white dark:border-zinc-200 ring-4 ring-offset-2 ring-offset-zinc-950 ring-accent scale-110 transition-all shadow-md";
+            }
+            updateTabStyles();
+        }
+
+        function switchTab(tab) {
+            activeTab = tab;
+            document.getElementById('section-notes').classList.add('hidden');
+            document.getElementById('section-crypto').classList.add('hidden');
+            document.getElementById('section-settings').classList.add('hidden');
+            updateTabStyles();
+            if (tab === 'notes') document.getElementById('section-notes').classList.remove('hidden');
+            else if (tab === 'crypto') document.getElementById('section-crypto').classList.remove('hidden');
+            else document.getElementById('section-settings').classList.remove('hidden');
+        }
+
+        function updateTabStyles() {
+            document.getElementById('nav-notes').className = 'flex flex-col items-center gap-1 text-zinc-400';
+            document.getElementById('nav-crypto').className = 'flex flex-col items-center gap-1 text-zinc-400';
+            document.getElementById('nav-settings').className = 'flex flex-col items-center gap-1 text-zinc-400';
+            const activeBtn = document.getElementById(`nav-${activeTab}`);
+            if (activeTab === 'notes') activeBtn.className = 'flex flex-col items-center gap-1 text-accent';
+            else if (activeTab === 'crypto') activeBtn.className = 'flex flex-col items-center gap-1 text-crypto';
+            else activeBtn.className = 'flex flex-col items-center gap-1 text-zinc-900 dark:text-white';
+            const activeFilterBtn = document.querySelector('.note-tab-btn.active');
+            if (activeFilterBtn) activeFilterBtn.style.backgroundColor = 'var(--color-accent)';
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast'); t.textContent = msg;
+            t.className = "fixed top-5 left-1/2 -translate-x-1/2 bg-zinc-800 border border-zinc-700 text-sm px-4 py-3 rounded-xl shadow-2xl opacity-100 translate-y-0 transition-all duration-300 z-50 text-white";
+            setTimeout(() => { t.className = "fixed top-5 left-1/2 -translate-x-1/2 bg-zinc-800 border border-zinc-700 text-sm px-4 py-3 rounded-xl shadow-2xl opacity-0 translate-y-[-20px] transition-all duration-300 z-50 pointer-events-none text-white"; }, 2500);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            renderNotes();
+            const savedAccent = localStorage.getItem('mv_accent') || '#f43f5e';
+            const targetBtn = Array.from(document.querySelectorAll('.color-pick-btn')).find(b => b.getAttribute('onclick').includes(savedAccent));
+            setAccentColor(savedAccent, '#e11d48', targetBtn);
+        });
+    </script>
+</body>
+</html>
