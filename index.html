@@ -28,24 +28,48 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
         :root { --color-accent: #f43f5e; --color-accent-hover: #e11d48; }
-        body { font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; transition: background-color 0.2s, color 0.2s; font-size: 16px; }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+            transition: background-color 0.2s, color 0.2s; 
+            font-size: 16px;
+            margin: 0;
+            padding: 0;
+        }
+        
+        /* Фикс для PWA на iPhone */
+        @media (display-mode: standalone) {
+            body {
+                padding-top: env(safe-area-inset-top);
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+            main {
+                min-height: -webkit-fill-available;
+            }
+        }
+        
         /* Увеличиваем размер шрифта на iPhone */
         @media (max-width: 768px) {
             body { font-size: 15px; }
             .text-xs { font-size: 0.75rem; }
         }
+        
         .custom-scroll::-webkit-scrollbar { width: 4px; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #52525b; border-radius: 10px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        /* Улучшенные кнопки действий */
+        
         .action-btn {
             transition: all 0.2s ease;
         }
         .action-btn:active {
             transform: scale(0.92);
         }
-        /* Контейнер заметки с улучшенной структурой */
         .note-card {
             transition: all 0.2s ease;
         }
@@ -184,7 +208,7 @@
                 <span class="text-[10px] font-bold">Сейф</span>
             </button>
             <button onclick="switchTab('settings')" id="nav-settings" class="flex flex-col items-center gap-1 text-zinc-400 transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
                 <span class="text-[10px] font-bold">Опции</span>
             </button>
         </div>
@@ -198,7 +222,6 @@
         let activeTab = "notes";
         let editingNoteId = null;
 
-        // Запрашиваем разрешение на уведомления ТОЛЬКО после действия пользователя
         function requestNotificationPermission() {
             if (Notification.permission === 'default') {
                 Notification.requestPermission().then(perm => {
@@ -210,7 +233,6 @@
             }
         }
 
-        // Добавляем обработчик для запроса уведомлений при первом нажатии
         document.addEventListener('click', function firstClickHandler() {
             requestNotificationPermission();
             document.removeEventListener('click', firstClickHandler);
@@ -291,7 +313,6 @@
                         });
                     });
                 } else {
-                    // Fallback для обычного браузера
                     new Notification(title, { 
                         body: body, 
                         icon: 'https://cdn-icons-png.flaticon.com/512/3119/3119338.png' 
@@ -306,24 +327,20 @@
 
             if (delay <= 0) return;
 
-            // Сохраняем в localStorage для восстановления после перезагрузки
             let reminders = JSON.parse(localStorage.getItem('mv_reminders') || '[]');
             const reminderId = Date.now();
             reminders.push({ text: noteText, time: targetDate.getTime(), id: reminderId });
             localStorage.setItem('mv_reminders', JSON.stringify(reminders));
 
-            // Устанавливаем таймер (работает пока открыт браузер/приложение)
             const timerId = setTimeout(() => {
                 if (Notification.permission === "granted") {
                     showNativeNotification("MindVault Pro: Напоминание! 🔔", noteText);
                 }
-                // Удаляем из localStorage после показа
                 let currentReminders = JSON.parse(localStorage.getItem('mv_reminders') || '[]');
                 currentReminders = currentReminders.filter(r => r.id !== reminderId);
                 localStorage.setItem('mv_reminders', JSON.stringify(currentReminders));
             }, delay);
             
-            // Сохраняем ID таймера в глобальный объект для возможности отмены
             if (!window.reminderTimers) window.reminderTimers = {};
             window.reminderTimers[reminderId] = timerId;
         }
@@ -343,7 +360,6 @@
                     window.reminderTimers[r.id] = timerId;
                 }
             });
-            // Очищаем просроченные
             localStorage.setItem('mv_reminders', JSON.stringify(reminders.filter(r => r.time > now)));
         }
 
@@ -406,6 +422,12 @@
             }
         }
 
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         function renderNotes() {
             const list = document.getElementById('notes-list'); list.innerHTML = "";
             const filtered = currentFilter === 'all' ? notes : notes.filter(n => n.category === currentFilter);
@@ -419,30 +441,19 @@
                 list.innerHTML += `
                     <div class="note-card bg-white dark:bg-zinc-900 border ${isEditing ? 'border-amber-500 ring-2 ring-amber-500/30' : 'border-zinc-200 dark:border-zinc-800/80'} rounded-xl p-3.5 flex flex-col gap-2 relative shadow-sm">
                         <div class="flex items-start justify-between">
-                            <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800">${note.category}</span>
+                            <span class="text-[11px] font-bold px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800">${escapeHtml(note.category)}</span>
                             <div class="flex gap-3 ml-2">
-                                <button onclick="editNote(${note.id})" title="Редактировать" class="action-btn text-zinc-400 hover:text-amber-500 transition-colors p-1">
-                                    ✏️
-                                </button>
-                                <button onclick="deleteNote(${note.id})" title="Удалить" class="action-btn text-zinc-400 hover:text-accent transition-colors p-1">
-                                    🗑️
-                                </button>
+                                <button onclick="editNote(${note.id})" title="Редактировать" class="action-btn text-zinc-400 hover:text-amber-500 transition-colors p-1">✏️</button>
+                                <button onclick="deleteNote(${note.id})" title="Удалить" class="action-btn text-zinc-400 hover:text-accent transition-colors p-1">🗑️</button>
                             </div>
                         </div>
                         <p class="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed break-words pr-2">${escapeHtml(note.text)}</p>
                         <div class="flex items-center justify-between mt-1">
-                            ${note.reminder ? `<div class="flex items-center gap-1 text-[11px] font-semibold text-accent bg-accent/5 px-2 py-0.5 rounded border border-accent/20">🔔 ${note.reminder}</div>` : '<div></div>'}
-                            <span class="text-[11px] text-zinc-400 dark:text-zinc-500">${note.date}</span>
+                            ${note.reminder ? `<div class="flex items-center gap-1 text-[11px] font-semibold text-accent bg-accent/5 px-2 py-0.5 rounded border border-accent/20">🔔 ${escapeHtml(note.reminder)}</div>` : '<div></div>'}
+                            <span class="text-[11px] text-zinc-400 dark:text-zinc-500">${escapeHtml(note.date)}</span>
                         </div>
                     </div>`;
             });
-        }
-        
-        // Функция для экранирования HTML
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
         }
 
         function filterNotes(cat, event) {
@@ -554,9 +565,7 @@
                                 <input type="password" id="hide-pw-${p.id}" value="${p.val.replace(/'/g, "\\'")}" readonly class="bg-transparent font-mono text-crypto outline-none w-full border-none p-0 text-sm">
                                 <button onclick="toggleFieldType('hide-pw-${p.id}')" class="text-zinc-400 hover:text-zinc-200 px-1">👁️</button>
                             </div>
-                            <button onclick="deletePassword(${p.id})" class="absolute top-3 right-2 text-zinc-400 hover:text-accent p-1">
-                                🗑️
-                            </button>
+                            <button onclick="deletePassword(${p.id})" class="absolute top-3 right-2 text-zinc-400 hover:text-accent p-1">🗑️</button>
                         </div>`;
                 });
             } catch(e) {
@@ -648,16 +657,9 @@
             setTimeout(() => { t.className = "fixed top-5 left-1/2 -translate-x-1/2 bg-zinc-800/95 border border-zinc-700 text-sm px-4 py-3 rounded-xl shadow-2xl opacity-0 translate-y-[-20px] transition-all duration-300 z-50 pointer-events-none flex items-center gap-2 text-white max-w-[90vw] text-center"; }, 2500);
         }
 
-        // Регистрация Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/mindvault/sw.js')
-                .then(reg => {
-                    console.log('SW registered:', reg);
-                    // Проверяем поддержку push
-                    if ('Notification' in window && Notification.permission === 'granted') {
-                        console.log('Notifications supported');
-                    }
-                })
+                .then(reg => console.log('SW registered:', reg))
                 .catch(err => console.log('SW error:', err));
         }
 
