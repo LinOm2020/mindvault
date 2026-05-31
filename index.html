@@ -241,13 +241,41 @@
 
             <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3">
                 <h3 class="text-sm font-bold border-b border-zinc-800 pb-2 text-white">Уведомления</h3>
+
                 <div class="flex items-center justify-between text-xs">
                     <div>
                         <p class="font-semibold text-zinc-300">Разрешение на Push</p>
                         <p class="text-zinc-500 mt-0.5" id="notif-status-text">—</p>
                     </div>
                     <button onclick="requestNotificationPermission()"
-                        class="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-xl font-bold text-zinc-300 hover:bg-zinc-700 transition-colors">Запросить</button>
+                        class="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-xl font-bold text-zinc-300 hover:bg-zinc-700 transition-colors text-xs">🔔 Запросить</button>
+                </div>
+
+                <div class="flex items-center justify-between text-xs">
+                    <div>
+                        <p class="font-semibold text-zinc-300">Тестовое уведомление</p>
+                        <p class="text-zinc-500 mt-0.5">Придёт через 5 секунд</p>
+                    </div>
+                    <button onclick="sendTestNotification()"
+                        class="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-xl font-bold text-zinc-300 hover:bg-zinc-700 transition-colors text-xs">🧪 Тест</button>
+                </div>
+
+                <div class="flex items-center justify-between text-xs">
+                    <div>
+                        <p class="font-semibold text-zinc-300">Service Worker</p>
+                        <p class="text-zinc-500 mt-0.5" id="sw-detail-status">—</p>
+                    </div>
+                    <button onclick="reregisterSW()"
+                        class="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-xl font-bold text-zinc-300 hover:bg-zinc-700 transition-colors text-xs">🔄 Переустановить</button>
+                </div>
+
+                <div class="flex items-center justify-between text-xs">
+                    <div>
+                        <p class="font-semibold text-zinc-300">Кэш браузера</p>
+                        <p class="text-zinc-500 mt-0.5">Сбросить и перезагрузить</p>
+                    </div>
+                    <button onclick="clearCacheAndReload()"
+                        class="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-xl font-bold text-zinc-300 hover:bg-zinc-700 transition-colors text-xs">🗑 Очистить</button>
                 </div>
             </div>
 
@@ -389,9 +417,52 @@ async function requestNotificationPermission() {
 
 function updateNotifStatus() {
     const el = document.getElementById('notif-status-text');
+    const sw = document.getElementById('sw-detail-status');
     if (!('Notification' in window)) { el.textContent = 'Не поддерживается'; return; }
-    const map = { granted: '✅ Разрешено', denied: '❌ Запрещено', default: '⏸ Не задано' };
+    const map = { granted: '✅ Разрешено', denied: '❌ Запрещено (сбросьте в браузере)', default: '⏸ Не задано — нажмите Запросить' };
     el.textContent = map[Notification.permission] || '—';
+    if (sw) {
+        navigator.serviceWorker.getRegistration().then(reg => {
+            sw.textContent = reg ? ('✅ Активен · ' + (reg.active ? reg.active.scriptURL.split('/').pop() : '—')) : '❌ Не зарегистрирован';
+        });
+    }
+}
+
+async function sendTestNotification() {
+    if (Notification.permission !== 'granted') {
+        showToast('Сначала разрешите уведомления', '⚠️');
+        return;
+    }
+    const testTime = Date.now() + 5000;
+    sendToServiceWorker('test-' + Date.now(), '🧪 Тест MindVault — уведомления работают!', testTime);
+    showToast('Уведомление придёт через 5 сек', '🧪');
+}
+
+async function reregisterSW() {
+    showToast('Переустанавливаю SW...', '🔄');
+    try {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const reg of regs) await reg.unregister();
+        await initServiceWorker();
+        updateNotifStatus();
+        showToast('SW переустановлен!', '✅');
+    } catch (e) {
+        showToast('Ошибка: ' + e.message, '❌');
+    }
+}
+
+async function clearCacheAndReload() {
+    showToast('Очищаю кэш...', '🗑');
+    try {
+        // Удаляем все кэши SW
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+        // Снимаем все SW
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const reg of regs) await reg.unregister();
+    } catch (e) {}
+    // Жёсткая перезагрузка без кэша
+    setTimeout(() => location.reload(true), 500);
 }
 
 function sendToServiceWorker(id, text, timestamp) {
