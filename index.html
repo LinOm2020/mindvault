@@ -346,7 +346,7 @@ async function initServiceWorker() {
         return;
     }
     try {
-        swRegistration = await navigator.serviceWorker.register('sw.js', { scope: '/' });
+        swRegistration = await navigator.serviceWorker.register('./sw.js');
         updateSwBadge(true);
         // Пинг через небольшую задержку чтобы SW активировался
         setTimeout(pingSW, 800);
