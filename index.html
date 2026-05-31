@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <title>MindVault Pro — PWA + сейф с редактированием</title>
+    <title>MindVault Pro — Заметки и сейф</title>
     <link rel="manifest" href="data:application/manifest+json,{}" id="manifestPlaceholder">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
@@ -13,38 +13,41 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: #09090b; color: #fafafa; transition: background 0.2s; position: relative; min-height: 100vh; }
         html.light body { background: #f4f4f5; color: #18181b; }
-        #matrixCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; opacity: 0; transition: opacity 0.3s; }
-        body.matrix-active #matrixCanvas { opacity: 0.2; pointer-events: none; }
-        body.matrix-active main, body.matrix-active nav { background-color: transparent !important; backdrop-filter: blur(2px); }
+        
+        /* Матрица (фон) */
+        #matrixCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        body.matrix-active #matrixCanvas {
+            opacity: 0.2;
+        }
+        body.matrix-active main, body.matrix-active nav {
+            background-color: transparent !important;
+            backdrop-filter: blur(2px);
+        }
+        
         .nav-btn { min-height: 48px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-weight: 600; }
         .tab-active { color: var(--color-accent) !important; }
-        .note-tab-btn { transition: all 0.2s; white-space: nowrap; padding: 6px 12px; border-radius: 20px; }
-        .game-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; aspect-ratio: 1 / 1; background: rgba(0,0,0,0.3); border-radius: 20px; padding: 8px; }
-        .candy { display: flex; align-items: center; justify-content: center; font-size: 1.5rem; border-radius: 12px; background: rgba(255,255,255,0.08); cursor: pointer; backdrop-filter: blur(2px); }
-        html.light .candy { background: rgba(0,0,0,0.05); }
-        .candy.selected { transform: scale(1.05); background: var(--color-accent); box-shadow: 0 0 0 2px white; }
-        .pop-effect { animation: pop 0.12s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
-        @keyframes pop { 100% { transform: scale(0.2); opacity: 0; } }
-        .fall-effect { animation: fall 0.2s ease-out; }
-        @keyframes fall { from { transform: translateY(-35px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .plane-fly { position: fixed; font-size: 2rem; pointer-events: none; z-index: 200; filter: drop-shadow(0 4px 6px black); }
+        .note-tab-btn { transition: all 0.2s; white-space: nowrap; padding: 6px 12px; border-radius: 20px; background: #27272a; color: #d4d4d8; }
+        .note-tab-btn.tab-active { background: var(--color-accent) !important; color: white !important; }
+        
         .toast { animation: fadeIn 0.2s ease; background: #1e1e2f; color: white; padding: 8px 16px; border-radius: 40px; font-size: 13px; }
         @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .mic-recording { animation: pulseMic 1s infinite; background-color: #ef4444 !important; }
-        @keyframes pulseMic { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
         .highlight { background-color: #fde047; color: #18181b; border-radius: 4px; padding: 0 2px; }
         .pin-icon { transition: transform 0.2s; }
         .pin-icon.pinned { transform: rotate(-45deg); color: var(--color-accent); }
-        /* Password strength */
         .strength-bar { height: 4px; border-radius: 4px; transition: width 0.2s, background 0.2s; }
-        /* modal */
+        .mic-recording { animation: pulseMic 1s infinite; background-color: #ef4444 !important; }
+        @keyframes pulseMic { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
         .modal-bg { background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
-        /* увеличенные отступы */
-        .main-container { padding: 20px 16px 80px 16px; }
-        .btn-large { padding: 12px 16px; border-radius: 28px; font-weight: 600; }
-        .card { border-radius: 28px; padding: 20px; }
     </style>
 </head>
 <body>
@@ -55,38 +58,36 @@
         <button class="absolute top-5 right-5 text-3xl text-white">✕</button>
     </div>
 
-    <main class="max-w-lg mx-auto main-container relative z-10" id="app">
-        <!-- Заголовок -->
+    <main class="max-w-lg mx-auto px-4 pt-5 pb-20 relative z-10">
         <header class="flex justify-between items-center mb-6">
             <div><h1 class="text-3xl font-bold">MindVault <span style="color:var(--color-accent)">Pro</span></h1><p class="text-xs text-zinc-500">Офлайн PWA | Сейф AES-256</p></div>
             <span id="sw-status" class="text-[10px] bg-zinc-800 px-2 py-1 rounded">загрузка</span>
         </header>
 
-        <!-- ===================== ЗАМЕТКИ (основной экран) ===================== -->
+        <!-- Панель ЗАМЕТКИ -->
         <div id="notesPanel">
-            <div id="edit-bar" class="hidden bg-amber-500/20 p-3 rounded-xl justify-between mb-4"><span>✏️ Редактирование</span><button onclick="cancelEditNote()">Отмена</button></div>
-            
-            <!-- фильтры и поиск -->
-            <div class="flex gap-2 overflow-x-auto pb-3 no-scrollbar mb-2">
-                <button onclick="filterNotes('all',this)" class="note-tab-btn tab-active bg-zinc-800">Все</button>
-                <button onclick="filterNotes('💡 Мысли',this)" class="note-tab-btn bg-zinc-800">💡 Мысли</button>
-                <button onclick="filterNotes('📅 Задачи',this)" class="note-tab-btn bg-zinc-800">📅 Задачи</button>
-                <button onclick="filterNotes('💼 Работа',this)" class="note-tab-btn bg-zinc-800">💼 Работа</button>
+            <!-- Фильтры -->
+            <div class="flex gap-2 overflow-x-auto pb-3 no-scrollbar mb-3">
+                <button onclick="filterNotes('all',this)" class="note-tab-btn tab-active">Все</button>
+                <button onclick="filterNotes('💡 Мысли',this)" class="note-tab-btn">💡 Мысли</button>
+                <button onclick="filterNotes('📅 Задачи',this)" class="note-tab-btn">📅 Задачи</button>
+                <button onclick="filterNotes('💼 Работа',this)" class="note-tab-btn">💼 Работа</button>
             </div>
+            <!-- Поиск -->
             <div class="relative mb-4"><input type="text" id="searchInput" placeholder="🔍 Поиск по заметкам и #тегам" class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl py-3 pl-10 pr-4 text-base"></div>
             
-            <!-- форма добавления заметки -->
+            <!-- Форма добавления заметки -->
             <div class="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-5 mb-5">
                 <div class="relative"><textarea id="noteText" class="w-full bg-zinc-950 rounded-xl p-3 text-base border border-zinc-700 h-28 resize-none pr-12" placeholder="Текст заметки, #тег, **жирный**... или надиктуйте голосом"></textarea><button id="micButton" class="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-zinc-700 hover:bg-zinc-600 text-white">🎙️</button></div>
                 <div id="imgPreview" class="hidden mt-3 w-16 h-16 relative"><img id="previewImg" class="rounded-lg object-cover w-full h-full"><button onclick="clearImage()" class="absolute -top-1 -right-1 bg-black rounded-full w-5 h-5 text-xs">✕</button></div>
                 <div class="flex justify-between mt-4"><label class="bg-zinc-800 px-4 py-2 rounded-xl text-sm cursor-pointer">📷 Прикрепить фото<input type="file" id="photoInput" accept="image/*" class="hidden"></label><button onclick="saveNote()" class="px-5 py-2 rounded-xl text-white text-sm font-bold" style="background:var(--color-accent)">Сохранить</button></div>
             </div>
             
-            <!-- список заметок -->
-            <div id="notesList" class="flex flex-col gap-4 max-h-[50vh] overflow-auto"></div>
+            <!-- Список заметок -->
+            <div id="notesList" class="flex flex-col gap-4 max-h-[50vh] overflow-auto pb-4"></div>
         </div>
 
-        <!-- ===================== СЕЙФ ===================== -->
+        <!-- Панель СЕЙФ -->
         <div id="cryptoPanel" class="hidden">
             <div id="cryptoLock" class="bg-zinc-900 rounded-2xl p-6 text-center">
                 <div class="w-14 h-14 mx-auto bg-cyan-500/20 rounded-full flex items-center justify-center text-cyan-500 mb-3 text-2xl">🔐</div>
@@ -115,21 +116,12 @@
             </div>
         </div>
 
-        <!-- ===================== БУРГЕР-МЕНЮ (второстепенное) ===================== -->
-        <div id="menuPanel" class="hidden flex flex-col gap-5">
-            <!-- Игра -->
-            <div class="bg-zinc-900 rounded-2xl p-5">
-                <h2 class="text-xl font-bold mb-3">🎮 Игра 3-в-ряд</h2>
-                <div class="flex justify-between font-bold mb-2"><span>Уровень <span id="gameLevel">1</span></span><span>Счёт <span id="gameScore">0</span></span></div>
-                <div class="game-grid" id="gameGrid"></div>
-                <p class="text-[11px] text-center text-zinc-400 mt-3">🔴🟡🟢 4 в ряд → 💣 | Квадрат 2x2 → ✈️ | ❄️🧱</p>
-            </div>
-
-            <!-- Настройки -->
+        <!-- Панель НАСТРОЙКИ (вместо игры) -->
+        <div id="settingsPanel" class="hidden flex flex-col gap-5">
             <div class="bg-zinc-900 rounded-2xl p-5 flex flex-col gap-4">
                 <h2 class="text-xl font-bold">⚙️ Настройки</h2>
                 <div class="flex justify-between items-center"><span>🌙 Тема</span><button onclick="toggleTheme()" class="px-4 py-2 bg-zinc-800 rounded-xl text-sm">Сменить</button></div>
-                <div><span>🎨 Акцент</span><div class="flex gap-3 mt-2"><div onclick="setAccent('#f43f5e')" class="w-8 h-8 rounded-full bg-rose-500 cursor-pointer"></div><div onclick="setAccent('#3b82f6')" class="w-8 h-8 rounded-full bg-blue-500 cursor-pointer"></div><div onclick="setAccent('#10b981')" class="w-8 h-8 rounded-full bg-emerald-500 cursor-pointer"></div><div onclick="setAccent('#a855f7')" class="w-8 h-8 rounded-full bg-purple-500 cursor-pointer"></div></div></div>
+                <div><span>🎨 Акцентный цвет</span><div class="flex gap-3 mt-2"><div onclick="setAccent('#f43f5e')" class="w-8 h-8 rounded-full bg-rose-500 cursor-pointer"></div><div onclick="setAccent('#3b82f6')" class="w-8 h-8 rounded-full bg-blue-500 cursor-pointer"></div><div onclick="setAccent('#10b981')" class="w-8 h-8 rounded-full bg-emerald-500 cursor-pointer"></div><div onclick="setAccent('#a855f7')" class="w-8 h-8 rounded-full bg-purple-500 cursor-pointer"></div></div></div>
                 <div class="flex justify-between items-center"><span>💚 Матрица (фон)</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="matrixToggle" class="sr-only peer"><div class="w-11 h-6 bg-zinc-700 rounded-full peer-checked:bg-accent after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div></label></div>
                 <div><div class="flex justify-between items-center"><span>🍅 Pomodoro (25 мин)</span><button id="pomodoroBtn" class="px-3 py-1 bg-accent rounded-lg text-sm font-bold">Старт</button></div><div class="text-center mt-2"><span id="timerDisplay" class="text-2xl font-mono">25:00</span></div></div>
                 <div class="flex gap-2"><button onclick="exportAll()" class="flex-1 py-2 bg-zinc-800 rounded-xl text-sm">📦 Экспорт</button><label class="flex-1 py-2 bg-zinc-800 rounded-xl text-sm text-center cursor-pointer">📥 Импорт<input type="file" id="importFile" class="hidden" accept=".json"></label></div>
@@ -143,26 +135,24 @@
         <div class="max-w-lg mx-auto flex justify-around">
             <button onclick="switchPanel('notes')" id="tabNotes" class="nav-btn text-accent text-base flex flex-col"><span class="text-2xl">📝</span><span class="text-[11px]">Заметки</span></button>
             <button onclick="switchPanel('crypto')" id="tabCrypto" class="nav-btn text-zinc-500 text-base"><span class="text-2xl">🔐</span><span class="text-[11px]">Сейф</span></button>
-            <button onclick="switchPanel('menu')" id="tabMenu" class="nav-btn text-zinc-500 text-base"><span class="text-2xl">☰</span><span class="text-[11px]">Меню</span></button>
+            <button onclick="switchPanel('settings')" id="tabSettings" class="nav-btn text-zinc-500 text-base"><span class="text-2xl">⚙️</span><span class="text-[11px]">Настройки</span></button>
         </div>
     </nav>
 
 <script>
 // --------------------------------------------------------------
-// 1. PWA (Service Worker + Manifest)
+// PWA + Service Worker
 // --------------------------------------------------------------
 function generateManifest() {
     return {
         name: "MindVault Pro",
         short_name: "MindVault",
-        description: "Заметки, сейф с шифрованием, игры, PWA",
+        description: "Заметки и зашифрованный сейф",
         start_url: ".",
         display: "standalone",
         theme_color: "#09090b",
         background_color: "#09090b",
-        icons: [
-            { src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f43f5e'/%3E%3Ctext x='50' y='68' font-size='50' text-anchor='middle' fill='white' font-family='monospace'%3EMV%3C/text%3E%3C/svg%3E", sizes: "any", type: "image/svg+xml" }
-        ]
+        icons: [{ src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f43f5e'/%3E%3Ctext x='50' y='68' font-size='50' text-anchor='middle' fill='white' font-family='monospace'%3EMV%3C/text%3E%3C/svg%3E", sizes: "any", type: "image/svg+xml" }]
     };
 }
 const manifestStr = JSON.stringify(generateManifest());
@@ -171,15 +161,13 @@ const manifestURL = URL.createObjectURL(manifestBlob);
 document.querySelector('#manifestPlaceholder').setAttribute('href', manifestURL);
 
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(e=>console.warn);
-    // Создаём sw.js динамически (так как всё в одном файле)
     const swCode = `self.addEventListener('install', e=>e.waitUntil(self.skipWaiting()));
 self.addEventListener('activate', e=>e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', e=>e.respondWith(fetch(e.request).catch(()=>caches.match(e.request))));`;
     const swBlob = new Blob([swCode], {type: 'application/javascript'});
     const swURL = URL.createObjectURL(swBlob);
     navigator.serviceWorker.register(swURL).then(()=>{
-        document.getElementById('sw-status').innerText = 'офлайн готов';
+        document.getElementById('sw-status').innerText = 'офлайн';
     }).catch(()=>{ document.getElementById('sw-status').innerText = 'офлайн недоступен'; });
 }
 let deferredPrompt;
@@ -192,7 +180,7 @@ document.getElementById('installPwaBtn')?.addEventListener('click', () => {
 });
 
 // --------------------------------------------------------------
-// 2. ЗАМЕТКИ (поиск, закрепление, озвучка, голосовой ввод)
+// 1. ЗАМЕТКИ
 // --------------------------------------------------------------
 let notes = JSON.parse(localStorage.getItem('mv_notes') || '[]');
 let currentNoteFilter = 'all';
@@ -200,7 +188,7 @@ let editingNoteId = null;
 let pendingImage = null;
 let searchQuery = '';
 
-// Speech Synthesis
+// Озвучивание
 let speechSynth = window.speechSynthesis;
 let voices = [];
 function loadVoices() { voices = speechSynth.getVoices(); }
@@ -216,7 +204,7 @@ function saveNote() {
     if(editingNoteId){
         let idx=notes.findIndex(n=>n.id===editingNoteId);
         if(idx!==-1) notes[idx]={...notes[idx], text, category:cat, image:pendingImage||notes[idx].image};
-        editingNoteId=null; document.getElementById('edit-bar').classList.add('hidden');
+        editingNoteId=null; document.getElementById('edit-bar')?.classList.add('hidden');
     } else { notes.unshift({id:Date.now(), text, category:cat, date:new Date().toLocaleDateString('ru'), image:pendingImage, pinned:false}); }
     localStorage.setItem('mv_notes',JSON.stringify(notes));
     document.getElementById('noteText').value=''; clearImage(); renderNotes(); showToast("Сохранено","✅");
@@ -234,14 +222,14 @@ function renderNotes(){
         <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4"><div class="flex justify-between items-start"><div><span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-zinc-800">${escapeHtml(n.category)}</span><span class="text-[11px] text-zinc-500 ml-2">${n.date||''}</span></div><div class="flex gap-3"><button onclick="togglePin(${n.id})" class="pin-icon ${n.pinned?'pinned':''} text-lg">📌</button><button onclick="speakText('${escapeHtml(n.text).replace(/'/g,"\\'")}')" class="text-lg">🔊</button><button onclick="editNoteById(${n.id})" class="text-amber-500 text-lg">✏️</button><button onclick="deleteNoteById(${n.id})" class="text-red-500 text-lg">🗑️</button></div></div>${n.image?`<img src="${n.image}" class="w-full h-32 object-cover rounded-xl my-2 cursor-pointer" onclick="openPhoto('${n.image}')">`:''}<div class="text-base mt-1">${displayed}</div></div>
     `}).join('');
 }
-function editNoteById(id){ let n=notes.find(n=>n.id===id); if(!n) return; editingNoteId=id; document.getElementById('noteText').value=n.text; if(n.image){ pendingImage=n.image; document.getElementById('previewImg').src=n.image; document.getElementById('imgPreview').classList.remove('hidden'); } document.getElementById('edit-bar').classList.remove('hidden'); }
-function cancelEditNote(){ editingNoteId=null; document.getElementById('noteText').value=''; clearImage(); document.getElementById('edit-bar').classList.add('hidden'); }
+function editNoteById(id){ let n=notes.find(n=>n.id===id); if(!n) return; editingNoteId=id; document.getElementById('noteText').value=n.text; if(n.image){ pendingImage=n.image; document.getElementById('previewImg').src=n.image; document.getElementById('imgPreview').classList.remove('hidden'); } let bar=document.getElementById('edit-bar'); if(bar) bar.classList.remove('hidden'); }
+function cancelEditNote(){ editingNoteId=null; document.getElementById('noteText').value=''; clearImage(); let bar=document.getElementById('edit-bar'); if(bar) bar.classList.add('hidden'); }
 function clearImage(){ pendingImage=null; document.getElementById('imgPreview').classList.add('hidden'); document.getElementById('photoInput').value=''; }
 function previewImage(file){ if(file){ let r=new FileReader(); r.onload=e=>{ pendingImage=e.target.result; document.getElementById('previewImg').src=pendingImage; document.getElementById('imgPreview').classList.remove('hidden'); }; r.readAsDataURL(file); } }
 document.getElementById('photoInput')?.addEventListener('change',e=>previewImage(e.target.files[0]));
 function openPhoto(src){ let modal=document.getElementById('photo-modal'); document.getElementById('modal-img').src=src; modal.classList.remove('hidden'); modal.classList.add('flex'); }
 function closePhotoModal(){ document.getElementById('photo-modal').classList.add('hidden'); }
-function filterNotes(cat,btn){ currentNoteFilter=cat; renderNotes(); document.querySelectorAll('.note-tab-btn').forEach(b=>{ b.classList.remove('tab-active'); b.classList.add('bg-zinc-800'); }); if(btn){ btn.classList.add('tab-active'); btn.classList.remove('bg-zinc-800'); } }
+function filterNotes(cat,btn){ currentNoteFilter=cat; renderNotes(); document.querySelectorAll('.note-tab-btn').forEach(b=>{ b.classList.remove('tab-active'); }); if(btn){ btn.classList.add('tab-active'); } }
 document.getElementById('searchInput')?.addEventListener('input',(e)=>{ searchQuery=e.target.value; renderNotes(); });
 function parseNoteText(txt){ let s=escapeHtml(txt).replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\*(.*?)\*/g,'<em>$1</em>'); return s.replace(/(^|\s)#([\wа-яА-Я]+)/g,'$1<span class="font-bold cursor-pointer" style="color:var(--color-accent)" onclick="filterNotes(\'#$2\',null)">#$2</span>'); }
 function escapeHtml(str){ return str.replace(/[&<>]/g,function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
@@ -253,7 +241,7 @@ function startVoiceInput(){ if(!recognition){ recognition=initSpeechRecognition(
 document.getElementById('micButton')?.addEventListener('click',startVoiceInput);
 
 // --------------------------------------------------------------
-// 3. СЕЙФ (с индикатором сложности, редактированием, копированием полей)
+// 2. СЕЙФ
 // --------------------------------------------------------------
 let currentMasterKey='', vaultItems=[], vaultMode='pass';
 function getPasswordStrength(pwd){
@@ -267,21 +255,15 @@ function getPasswordStrength(pwd){
     return Math.min(5,score);
 }
 function updateStrengthMeter(elementId, password){
-    let strength=getStrengthColor(password);
+    let s=getPasswordStrength(password);
+    let percent=0, color='#ef4444';
+    if(s===0) percent=0;
+    else if(s<=2) { percent=30; color='#ef4444'; }
+    else if(s<=3) { percent=60; color='#eab308'; }
+    else { percent=100; color='#22c55e'; }
     let bar=document.getElementById(elementId);
-    if(bar){
-        bar.style.width=strength.percent+'%';
-        bar.style.backgroundColor=strength.color;
-    }
+    if(bar){ bar.style.width=percent+'%'; bar.style.backgroundColor=color; }
 }
-function getStrengthColor(pwd){
-    let s=getPasswordStrength(pwd);
-    if(s===0) return {percent:0,color:'#ef4444'};
-    if(s<=2) return {percent:30,color:'#ef4444'};
-    if(s<=3) return {percent:60,color:'#eab308'};
-    return {percent:100,color:'#22c55e'};
-}
-// При вводе мастер-пароля
 document.getElementById('masterPass')?.addEventListener('input',(e)=>updateStrengthMeter('masterStrength',e.target.value));
 document.getElementById('vaultSecret')?.addEventListener('input',(e)=>updateStrengthMeter('secretStrength',e.target.value));
 
@@ -311,71 +293,180 @@ function pasteClipboard(){ navigator.clipboard.readText().then(t=>{ document.get
 function toggleSecretField(){ let f=document.getElementById('vaultSecret'); if(f) f.type=f.type==='password'?'text':'password'; }
 
 // --------------------------------------------------------------
-// 4. ИГРА (оставлена без изменений, но скопирована из предыдущей версии)
-// --------------------------------------------------------------
-const W=8; let gameBoard=[], gameScore=0, gameLevel=1, selectedIdx=null, gameBusy=false;
-const COLORS_LIST=['🔴','🟡','🟢','🔵','🟣'], BOMB='💣', PLANE='✈️', ICE='❄️', WALL='🧱';
-class Tile{ constructor(type,color=null,hp=1){ this.type=type; this.color=color; this.hp=hp; } display(){ if(this.type==='bomb')return BOMB; if(this.type==='plane')return PLANE; if(this.type==='ice')return ICE; if(this.type==='wall')return WALL; return this.color; } }
-function initGame(){ gameBoard=[]; gameScore=0; gameLevel=1; selectedIdx=null; gameBusy=false; for(let i=0;i<W*W;i++) gameBoard.push(new Tile('normal',COLORS_LIST[Math.floor(Math.random()*COLORS_LIST.length)])); while(clearMatchesSilent()); updateGameUI(); renderGame(); }
-function updateGameUI(){ document.getElementById('gameScore').innerText=gameScore; let lvl=Math.floor(gameScore/120)+1; if(lvl>gameLevel){ gameLevel=lvl; showToast(`Уровень ${gameLevel}! 🧊❄️`,'🏆'); } document.getElementById('gameLevel').innerText=gameLevel; }
-function renderGame(){ let grid=document.getElementById('gameGrid'); if(!grid) return; grid.innerHTML=''; for(let i=0;i<gameBoard.length;i++){ let tile=gameBoard[i]; let div=document.createElement('div'); div.className='candy'; if(selectedIdx===i) div.classList.add('selected'); if(tile.type==='ice') div.style.background='#88ccff40'; if(tile.type==='wall') div.style.background='#aa774430'; div.innerText=tile.display(); div.onclick=()=>onTileClick(i); grid.appendChild(div); } }
-async function onTileClick(idx){ if(gameBusy) return; let tile=gameBoard[idx]; if(tile.type==='bomb'){ explodeBomb(idx); return; } if(tile.type==='plane'){ activatePlane(idx); return; } if(selectedIdx===null){ selectedIdx=idx; renderGame(); return; } let diff=Math.abs(selectedIdx-idx); let sameRow=Math.floor(selectedIdx/W)===Math.floor(idx/W); if((diff===1&&sameRow)||diff===W){ await trySwap(selectedIdx,idx); } selectedIdx=null; renderGame(); }
-async function trySwap(a,b){ if(gameBusy) return; gameBusy=true; [gameBoard[a],gameBoard[b]]=[gameBoard[b],gameBoard[a]]; renderGame(); await delay(70); let had=await processMatches(true); if(!had){ [gameBoard[a],gameBoard[b]]=[gameBoard[b],gameBoard[a]]; renderGame(); } gameBusy=false; }
-async function processMatches(award){ let any=false; while(true){ let matches=findAllMatches(); if(matches.size===0) break; any=true; let bombSpots=[],planeSpots=[]; for(let pos of matches){ let t=gameBoard[pos]; if(t.type==='ice'||t.type==='wall'){ t.hp--; if(t.hp<=0){ gameBoard[pos]=new Tile('normal',COLORS_LIST[Math.floor(Math.random()*COLORS_LIST.length)]); if(award) gameScore+=6; } else { if(award) gameScore+=2; } continue; } if(t.type==='normal'&&award) gameScore+=10; if(t.type==='bomb') bombSpots.push(pos); if(t.type==='plane') planeSpots.push(pos); gameBoard[pos]=null; } for(let p of bombSpots) gameBoard[p]=new Tile('bomb'); for(let p of planeSpots) gameBoard[p]=new Tile('plane'); for(let i=0;i<gameBoard.length;i++) if(gameBoard[i]===null) gameBoard[i]=new Tile('normal',COLORS_LIST[Math.floor(Math.random()*COLORS_LIST.length)]); await applyGravityAndRefill(); updateGameUI(); if(findAllMatches().size>0){ await processMatches(award); return true; } } if(any) updateGameUI(); return any; }
-function findAllMatches(){ let set=new Set(); for(let r=0;r<W;r++) for(let c=0;c<W-2;c++){ let idx=r*W+c,t=gameBoard[idx]; if(!t||t.type!=='normal') continue; let len=1; while(c+len<W&&gameBoard[r*W+c+len]?.type==='normal'&&gameBoard[r*W+c+len]?.color===t.color) len++; if(len>=3){ for(let k=0;k<len;k++) set.add(idx+k); if(len>=4){ let mid=idx+Math.floor(len/2); if(gameBoard[mid]?.type==='normal') gameBoard[mid]=new Tile('bomb'); } } c+=len-1; } for(let c=0;c<W;c++) for(let r=0;r<W-2;r++){ let idx=r*W+c,t=gameBoard[idx]; if(!t||t.type!=='normal') continue; let len=1; while(r+len<W&&gameBoard[(r+len)*W+c]?.type==='normal'&&gameBoard[(r+len)*W+c]?.color===t.color) len++; if(len>=3){ for(let k=0;k<len;k++) set.add(idx+k*W); if(len>=4){ let mid=idx+Math.floor(len/2)*W; if(gameBoard[mid]?.type==='normal') gameBoard[mid]=new Tile('bomb'); } } r+=len-1; } for(let r=0;r<W-1;r++) for(let c=0;c<W-1;c++){ let a=gameBoard[r*W+c],b=gameBoard[r*W+c+1],c1=gameBoard[(r+1)*W+c],d=gameBoard[(r+1)*W+c+1]; if(a?.type==='normal'&&b?.type==='normal'&&c1?.type==='normal'&&d?.type==='normal'&&a.color===b.color&&a.color===c1.color&&a.color===d.color){ let center=r*W+c; if(gameBoard[center]?.type==='normal') gameBoard[center]=new Tile('plane'); set.add(center); set.add(center+1); set.add(center+W); set.add(center+W+1); } } return set; }
-async function applyGravityAndRefill(){ for(let c=0;c<W;c++){ let column=[]; for(let r=W-1;r>=0;r--) if(gameBoard[r*W+c]!==null) column.push(gameBoard[r*W+c].clone()); while(column.length<W){ let rnd=COLORS_LIST[Math.floor(Math.random()*COLORS_LIST.length)]; let newTile; if(gameLevel>=3&&Math.random()<0.12) newTile=new Tile('ice',null,2); else if(gameLevel>=6&&Math.random()<0.08) newTile=new Tile('wall',null,3); else newTile=new Tile('normal',rnd); column.push(newTile); } for(let r=0;r<W;r++){ let idx=(W-1-r)*W+c; gameBoard[idx]=column[r]; let div=document.getElementById('gameGrid')?.children[idx]; if(div) div.classList.add('fall-effect'); } } await delay(180); renderGame(); }
-async function explodeBomb(idx){ if(gameBusy) return; gameBusy=true; let r0=Math.floor(idx/W),c0=idx%W,targets=[]; for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){ let nr=r0+dr,nc=c0+dc; if(nr>=0&&nr<W&&nc>=0&&nc<W) targets.push(nr*W+nc); } for(let pos of targets){ let tile=gameBoard[pos]; if(tile&&(tile.type==='ice'||tile.type==='wall')) tile.hp=Math.max(0,tile.hp-1); else if(tile&&tile.type!=='bomb'&&tile.type!=='plane') gameBoard[pos]=null; if(pos!==idx&&gameBoard[pos]&&(gameBoard[pos].type==='bomb'||gameBoard[pos].type==='plane')) explodeBomb(pos); } gameBoard[idx]=null; for(let i=0;i<gameBoard.length;i++) if(gameBoard[i]===null) gameBoard[i]=new Tile('normal',COLORS_LIST[Math.floor(Math.random()*COLORS_LIST.length)]); await applyGravityAndRefill(); await processMatches(true); updateGameUI(); gameBusy=false; renderGame(); }
-async function activatePlane(idx){ if(gameBusy) return; gameBusy=true; let flyDiv=document.createElement('div'); flyDiv.className='plane-fly'; flyDiv.innerText='✈️💨'; document.body.appendChild(flyDiv); flyDiv.style.left='0px'; flyDiv.style.top=window.innerHeight/2+'px'; for(let i=0;i<=100;i++){ flyDiv.style.left=(window.innerWidth*i/100)+'px'; flyDiv.style.top=window.innerHeight/2+Math.sin(i*0.15)*12+'px'; await delay(10); } flyDiv.remove(); let destroyed=new Set(); while(destroyed.size<5&&destroyed.size<W*W){ let r=Math.floor(Math.random()*gameBoard.length); if(gameBoard[r]&&gameBoard[r].type!=='wall') destroyed.add(r); } for(let pos of destroyed){ let tile=gameBoard[pos]; if(tile&&(tile.type==='ice'||tile.type==='wall')) tile.hp=Math.max(0,tile.hp-1); else gameBoard[pos]=null; let div=document.getElementById('gameGrid')?.children[pos]; if(div) div.classList.add('pop-effect'); } await delay(150); for(let pos of destroyed) if(gameBoard[pos]===null) gameBoard[pos]=new Tile('normal',COLORS_LIST[Math.floor(Math.random()*COLORS_LIST.length)]); gameBoard[idx]=null; for(let i=0;i<gameBoard.length;i++) if(gameBoard[i]===null) gameBoard[i]=new Tile('normal',COLORS_LIST[Math.floor(Math.random()*COLORS_LIST.length)]); await applyGravityAndRefill(); await processMatches(true); updateGameUI(); gameBusy=false; renderGame(); }
-function clearMatchesSilent(){ let m=findAllMatches(); if(m.size===0) return false; for(let p of m){ if(gameBoard[p]&&(gameBoard[p].type==='ice'||gameBoard[p].type==='wall')) gameBoard[p].hp--; else gameBoard[p]=null; } for(let i=0;i<gameBoard.length;i++) if(gameBoard[i]===null) gameBoard[i]=new Tile('normal',COLORS_LIST[Math.floor(Math.random()*COLORS_LIST.length)]); return true; }
-Tile.prototype.clone=function(){ return new Tile(this.type,this.color,this.hp); };
-function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
-
-// --------------------------------------------------------------
-// 5. МАТРИЦА и ПОМОДОРО
+// 3. МАТРИЦА (с сохранением состояния)
 // --------------------------------------------------------------
 let matrixInterval=null; let matrixActive=false;
-function initMatrix(){ if(!canvas) return; const canvas=document.getElementById('matrixCanvas'); canvas.width=window.innerWidth; canvas.height=window.innerHeight; let ctx=canvas.getContext('2d'); const chars="01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン"; const fontSize=18; let columns=Math.ceil(canvas.width/fontSize); let drops=[]; for(let i=0;i<columns;i++) drops[i]=1; function draw(){ if(!ctx || !matrixActive) return; ctx.fillStyle='rgba(0,0,0,0.05)'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle='#0f0'; ctx.font=fontSize+'px monospace'; for(let i=0;i<drops.length;i++){ let text=chars[Math.floor(Math.random()*chars.length)]; ctx.fillText(text,i*fontSize,drops[i]*fontSize); if(drops[i]*fontSize>canvas.height && Math.random()>0.975) drops[i]=0; drops[i]++; } } if(matrixInterval) clearInterval(matrixInterval); matrixInterval=setInterval(draw,50); }
-function startMatrix(){ matrixActive=true; document.body.classList.add('matrix-active'); initMatrix(); }
-function stopMatrix(){ matrixActive=false; if(matrixInterval){ clearInterval(matrixInterval); matrixInterval=null; } let canvas=document.getElementById('matrixCanvas'); let ctx=canvas?.getContext('2d'); if(ctx) ctx.clearRect(0,0,canvas.width,canvas.height); document.body.classList.remove('matrix-active'); }
-function toggleMatrix(e){ if(e.target.checked) startMatrix(); else stopMatrix(); }
-window.addEventListener('resize',()=>{ if(matrixActive){ let canvas=document.getElementById('matrixCanvas'); canvas.width=window.innerWidth; canvas.height=window.innerHeight; initMatrix(); } });
-document.getElementById('matrixToggle')?.addEventListener('change',toggleMatrix);
+const canvasMatrix = document.getElementById('matrixCanvas');
+let matrixCtx = null;
+function initMatrixVisual(){
+    if(!canvasMatrix) return;
+    canvasMatrix.width = window.innerWidth;
+    canvasMatrix.height = window.innerHeight;
+    matrixCtx = canvasMatrix.getContext('2d');
+    const chars = "01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン";
+    const fontSize = 18;
+    let columns = Math.ceil(canvasMatrix.width / fontSize);
+    let drops = [];
+    for(let i=0;i<columns;i++) drops[i] = 1;
+    function drawMatrix(){
+        if(!matrixActive || !matrixCtx) return;
+        matrixCtx.fillStyle = 'rgba(0,0,0,0.05)';
+        matrixCtx.fillRect(0,0,canvasMatrix.width,canvasMatrix.height);
+        matrixCtx.fillStyle = '#0f0';
+        matrixCtx.font = fontSize + 'px monospace';
+        for(let i=0;i<drops.length;i++){
+            let text = chars[Math.floor(Math.random()*chars.length)];
+            matrixCtx.fillText(text, i*fontSize, drops[i]*fontSize);
+            if(drops[i]*fontSize > canvasMatrix.height && Math.random()>0.975) drops[i]=0;
+            drops[i]++;
+        }
+    }
+    if(matrixInterval) clearInterval(matrixInterval);
+    matrixInterval = setInterval(drawMatrix, 50);
+}
+function startMatrix(){
+    matrixActive = true;
+    document.body.classList.add('matrix-active');
+    initMatrixVisual();
+    localStorage.setItem('matrixEnabled', 'true');
+}
+function stopMatrix(){
+    matrixActive = false;
+    if(matrixInterval){ clearInterval(matrixInterval); matrixInterval = null; }
+    if(matrixCtx) matrixCtx.clearRect(0,0,canvasMatrix.width,canvasMatrix.height);
+    document.body.classList.remove('matrix-active');
+    localStorage.setItem('matrixEnabled', 'false');
+}
+function toggleMatrixFromUI(e){
+    if(e.target.checked) startMatrix();
+    else stopMatrix();
+}
+window.addEventListener('resize', ()=>{
+    if(matrixActive && canvasMatrix){
+        canvasMatrix.width = window.innerWidth;
+        canvasMatrix.height = window.innerHeight;
+        initMatrixVisual();
+    }
+});
+// Восстановление состояния матрицы при загрузке
+const matrixToggleCheckbox = document.getElementById('matrixToggle');
+if(matrixToggleCheckbox){
+    const savedMatrix = localStorage.getItem('matrixEnabled');
+    if(savedMatrix === 'true'){
+        matrixToggleCheckbox.checked = true;
+        startMatrix();
+    } else {
+        matrixToggleCheckbox.checked = false;
+        stopMatrix();
+    }
+    matrixToggleCheckbox.addEventListener('change', toggleMatrixFromUI);
+}
 
+// --------------------------------------------------------------
+// 4. ПОМОДОРО
+// --------------------------------------------------------------
 let pomodoroInterval=null, pomodoroSeconds=25*60, pomodoroRunning=false;
 function updateTimerDisplay(){ let mins=Math.floor(pomodoroSeconds/60); let secs=pomodoroSeconds%60; document.getElementById('timerDisplay').innerText=`${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`; }
-function startPomodoro(){ if(pomodoroInterval) clearInterval(pomodoroInterval); pomodoroRunning=true; pomodoroInterval=setInterval(()=>{ if(pomodoroSeconds<=0){ clearInterval(pomodoroInterval); pomodoroRunning=false; showToast("⏰ Время вышло! Сделайте перерыв.","🍅"); if(Notification.permission==='granted') new Notification('Pomodoro','Время концентрации закончилось'); pomodoroSeconds=25*60; updateTimerDisplay(); document.getElementById('pomodoroBtn').innerText='Старт'; }else{ pomodoroSeconds--; updateTimerDisplay(); } },1000); document.getElementById('pomodoroBtn').innerText='⏸️ Стоп'; }
-function stopPomodoro(){ if(pomodoroInterval){ clearInterval(pomodoroInterval); pomodoroInterval=null; } pomodoroRunning=false; pomodoroSeconds=25*60; updateTimerDisplay(); document.getElementById('pomodoroBtn').innerText='Старт'; }
+function startPomodoro(){
+    if(pomodoroInterval) clearInterval(pomodoroInterval);
+    pomodoroRunning=true;
+    pomodoroInterval=setInterval(()=>{
+        if(pomodoroSeconds<=0){
+            clearInterval(pomodoroInterval);
+            pomodoroRunning=false;
+            showToast("⏰ Время вышло! Сделайте перерыв.","🍅");
+            if(Notification.permission==='granted') new Notification('Pomodoro',{body:'Время концентрации закончилось'});
+            pomodoroSeconds=25*60;
+            updateTimerDisplay();
+            document.getElementById('pomodoroBtn').innerText='Старт';
+        }else{
+            pomodoroSeconds--;
+            updateTimerDisplay();
+        }
+    },1000);
+    document.getElementById('pomodoroBtn').innerText='⏸️ Стоп';
+}
+function stopPomodoro(){
+    if(pomodoroInterval){ clearInterval(pomodoroInterval); pomodoroInterval=null; }
+    pomodoroRunning=false;
+    pomodoroSeconds=25*60;
+    updateTimerDisplay();
+    document.getElementById('pomodoroBtn').innerText='Старт';
+}
 function togglePomodoro(){ if(pomodoroRunning) stopPomodoro(); else startPomodoro(); }
 document.getElementById('pomodoroBtn')?.addEventListener('click',togglePomodoro);
 
 // --------------------------------------------------------------
-// 6. НАВИГАЦИЯ, ТЕМА, ЭКСПОРТ
+// 5. НАВИГАЦИЯ, ТЕМА, АКЦЕНТ, ЭКСПОРТ/ИМПОРТ
 // --------------------------------------------------------------
 function switchPanel(panel){
     document.getElementById('notesPanel').classList.toggle('hidden', panel!=='notes');
     document.getElementById('cryptoPanel').classList.toggle('hidden', panel!=='crypto');
-    document.getElementById('menuPanel').classList.toggle('hidden', panel!=='menu');
-    let tabs={notes:'tabNotes', crypto:'tabCrypto', menu:'tabMenu'};
+    document.getElementById('settingsPanel').classList.toggle('hidden', panel!=='settings');
+    let tabs={notes:'tabNotes', crypto:'tabCrypto', settings:'tabSettings'};
     for(let [key,id] of Object.entries(tabs)){
         let btn=document.getElementById(id);
         if(key===panel){ btn.classList.add('text-accent'); btn.classList.remove('text-zinc-500'); }
         else{ btn.classList.remove('text-accent'); btn.classList.add('text-zinc-500'); }
     }
 }
-function toggleTheme(){ let isDark=document.documentElement.classList.toggle('dark'); localStorage.setItem('theme',isDark?'dark':'light'); }
-function setAccent(color){ document.documentElement.style.setProperty('--color-accent',color); localStorage.setItem('accentColor',color); }
-function exportAll(){ let data={notes, vault:localStorage.getItem('mv_vault_data')}; let blob=new Blob([JSON.stringify(data)],{type:'application/json'}); let a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='mindvault_backup.json'; a.click(); }
-function importData(input){ let f=input.files[0]; if(!f) return; let r=new FileReader(); r.onload=e=>{ try{ let d=JSON.parse(e.target.result); if(d.notes){ notes=d.notes; localStorage.setItem('mv_notes',JSON.stringify(notes)); renderNotes(); } if(d.vault) localStorage.setItem('mv_vault_data',d.vault); showToast("Импорт выполнен","✅"); }catch(e){ showToast("Ошибка файла","❌"); } }; r.readAsText(f); }
+function toggleTheme(){
+    let isDark=document.documentElement.classList.toggle('dark');
+    localStorage.setItem('theme',isDark?'dark':'light');
+}
+function setAccent(color){
+    document.documentElement.style.setProperty('--color-accent',color);
+    localStorage.setItem('accentColor',color);
+}
+function exportAll(){
+    let data={notes, vault:localStorage.getItem('mv_vault_data')};
+    let blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+    let a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='mindvault_backup.json';
+    a.click();
+}
+function importData(input){
+    let f=input.files[0];
+    if(!f) return;
+    let r=new FileReader();
+    r.onload=e=>{
+        try{
+            let d=JSON.parse(e.target.result);
+            if(d.notes){ notes=d.notes; localStorage.setItem('mv_notes',JSON.stringify(notes)); renderNotes(); }
+            if(d.vault) localStorage.setItem('mv_vault_data',d.vault);
+            showToast("Импорт выполнен","✅");
+        }catch(e){ showToast("Ошибка файла","❌"); }
+    };
+    r.readAsText(f);
+}
 document.getElementById('importFile')?.addEventListener('change',e=>importData(e.target));
-function showToast(msg,icon=''){ let t=document.getElementById('toast'); t.innerHTML=`${icon} ${msg}`; t.classList.remove('hidden'); setTimeout(()=>t.classList.add('hidden'),2000); }
+function showToast(msg,icon=''){
+    let t=document.getElementById('toast');
+    t.innerHTML=`${icon} ${msg}`;
+    t.classList.remove('hidden');
+    setTimeout(()=>t.classList.add('hidden'),2000);
+}
 
-// Инициализация
+// --------------------------------------------------------------
+// ИНИЦИАЛИЗАЦИЯ
+// --------------------------------------------------------------
 document.addEventListener('DOMContentLoaded',()=>{
-    if(localStorage.getItem('theme')==='light') document.documentElement.classList.remove('dark'); else document.documentElement.classList.add('dark');
-    let savedAccent=localStorage.getItem('accentColor'); if(savedAccent) document.documentElement.style.setProperty('--color-accent',savedAccent);
-    renderNotes(); initGame(); switchPanel('notes');
+    if(localStorage.getItem('theme')==='light') document.documentElement.classList.remove('dark');
+    else document.documentElement.classList.add('dark');
+    let savedAccent=localStorage.getItem('accentColor');
+    if(savedAccent) document.documentElement.style.setProperty('--color-accent',savedAccent);
+    renderNotes();
+    switchPanel('notes');
     if(Notification.permission==='default') Notification.requestPermission();
-    let matrixToggle=document.getElementById('matrixToggle'); if(matrixToggle) matrixToggle.checked=false;
+    // Создаём элемент edit-bar, если его нет (для совместимости)
+    if(!document.getElementById('edit-bar')){
+        let div=document.createElement('div');
+        div.id='edit-bar';
+        div.className='hidden bg-amber-500/20 p-3 rounded-xl justify-between mb-4';
+        div.innerHTML='<span>✏️ Редактирование</span><button onclick="cancelEditNote()">Отмена</button>';
+        document.getElementById('notesPanel').insertBefore(div, document.getElementById('notesPanel').firstChild);
+    }
 });
 </script>
 </body>
