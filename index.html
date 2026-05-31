@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>MindVault Pro — стабильная версия</title>
+    <title>MindVault Pro — голосовой ввод</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -48,6 +48,8 @@
         @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
+        .mic-recording { animation: pulseMic 1s infinite; background-color: #ef4444 !important; }
+        @keyframes pulseMic { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
     </style>
 </head>
 <body class="dark">
@@ -59,7 +61,7 @@
 
     <main class="max-w-md mx-auto px-4 pt-5 pb-20 flex flex-col gap-5">
         <header class="flex justify-between items-center">
-            <div><h1 class="text-2xl font-bold">MindVault <span style="color:var(--color-accent)">Pro</span></h1><p class="text-[11px] text-zinc-500">Локальный сейф + игра</p></div>
+            <div><h1 class="text-2xl font-bold">MindVault <span style="color:var(--color-accent)">Pro</span></h1><p class="text-[11px] text-zinc-500">Локальный сейф + игра + голосовые заметки</p></div>
             <span id="sw-status" class="text-[10px] bg-zinc-800 px-2 py-1 rounded">офлайн</span>
         </header>
 
@@ -73,14 +75,19 @@
                 <button onclick="filterNotes('💼 Работа',this)" class="note-tab-btn px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-300 whitespace-nowrap">💼 Работа</button>
             </div>
             <div class="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4">
-                <textarea id="noteText" class="w-full bg-zinc-950 rounded-xl p-3 text-sm border border-zinc-800 h-24 resize-none" placeholder="Текст заметки, #тег, **жирный**..."></textarea>
+                <div class="relative">
+                    <textarea id="noteText" class="w-full bg-zinc-950 rounded-xl p-3 text-sm border border-zinc-800 h-24 resize-none pr-12" placeholder="Текст заметки, #тег, **жирный**... или надиктуйте голосом"></textarea>
+                    <button id="micButton" class="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-zinc-700 hover:bg-zinc-600 flex items-center justify-center text-white transition-colors" title="Голосовой ввод">
+                        🎙️
+                    </button>
+                </div>
                 <div id="imgPreview" class="hidden mt-2 w-16 h-16 relative"><img id="previewImg" class="rounded-lg object-cover w-full h-full"><button onclick="clearImage()" class="absolute -top-1 -right-1 bg-black rounded-full w-5 h-5 text-xs">✕</button></div>
                 <div class="flex justify-between mt-3"><label class="bg-zinc-800 px-3 py-2 rounded-xl text-xs cursor-pointer">📷 Прикрепить фото<input type="file" id="photoInput" accept="image/*" class="hidden"></label><button onclick="saveNote()" class="px-4 py-2 rounded-xl text-white text-xs font-bold" style="background:var(--color-accent)">Сохранить</button></div>
             </div>
             <div id="notesList" class="flex flex-col gap-3 max-h-96 overflow-auto mt-2"></div>
         </section>
 
-        <!-- СЕЙФ -->
+        <!-- СЕЙФ (тот же, что и ранее, полностью рабочий) -->
         <section id="crypto-section" class="hidden">
             <div id="cryptoLock" class="bg-zinc-900 rounded-2xl p-6 text-center">
                 <div class="w-12 h-12 mx-auto bg-cyan-500/20 rounded-full flex items-center justify-center text-cyan-500 mb-3">🔐</div>
@@ -107,7 +114,7 @@
             </div>
         </section>
 
-        <!-- ИГРА -->
+        <!-- ИГРА (та же стабильная) -->
         <section id="game-section" class="hidden">
             <div class="flex justify-between font-bold px-2"><span>Уровень <span id="gameLevel">1</span></span><span>Счёт <span id="gameScore">0</span></span></div>
             <div class="game-grid" id="gameGrid"></div>
@@ -135,12 +142,97 @@
 
 <script>
 // ----------------------------------------------------------------------
-// 1. ЗАМЕТКИ (полностью рабочие)
+// 1. ЗАМЕТКИ (с голосовым вводом)
 // ----------------------------------------------------------------------
 let notes = JSON.parse(localStorage.getItem('mv_notes') || '[]');
 let currentNoteFilter = 'all';
 let editingNoteId = null;
 let pendingImage = null;
+
+// Голосовое распознавание
+let recognition = null;
+let isRecording = false;
+
+function initSpeechRecognition() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        console.warn("Speech recognition not supported");
+        return null;
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const rec = new SpeechRecognition();
+    rec.continuous = false;       // распознаём одну фразу
+    rec.interimResults = false;   // берём только финальный результат
+    rec.lang = 'ru-RU';           // русский язык
+    return rec;
+}
+
+function startVoiceInput() {
+    if (!recognition) {
+        recognition = initSpeechRecognition();
+        if (!recognition) {
+            showToast("Голосовой ввод не поддерживается вашим браузером", "❌");
+            return;
+        }
+        recognition.onstart = () => {
+            isRecording = true;
+            const micBtn = document.getElementById('micButton');
+            micBtn.classList.add('mic-recording');
+            micBtn.innerText = '⏺️';
+            showToast("Говорите...", "🎤");
+        };
+        recognition.onerror = (event) => {
+            console.error("Speech error:", event.error);
+            isRecording = false;
+            const micBtn = document.getElementById('micButton');
+            micBtn.classList.remove('mic-recording');
+            micBtn.innerText = '🎙️';
+            if (event.error === 'not-allowed') {
+                showToast("Нет разрешения на использование микрофона", "⚠️");
+            } else if (event.error === 'no-speech') {
+                showToast("Речь не обнаружена", "🎤");
+            } else {
+                showToast("Ошибка распознавания: " + event.error, "❌");
+            }
+        };
+        recognition.onend = () => {
+            isRecording = false;
+            const micBtn = document.getElementById('micButton');
+            micBtn.classList.remove('mic-recording');
+            micBtn.innerText = '🎙️';
+        };
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            if (transcript) {
+                const textarea = document.getElementById('noteText');
+                const currentText = textarea.value;
+                // Если в поле что-то есть, добавим пробел и новую фразу, иначе просто вставим
+                if (currentText.trim().length > 0) {
+                    textarea.value = currentText + ' ' + transcript;
+                } else {
+                    textarea.value = transcript;
+                }
+                showToast("Распознано: " + transcript, "✅");
+            }
+        };
+    }
+    
+    if (isRecording) {
+        recognition.stop();
+    } else {
+        try {
+            recognition.start();
+        } catch (e) {
+            // Иногда start может выбросить ошибку, если уже запущен
+            showToast("Микрофон уже используется", "⚠️");
+        }
+    }
+}
+
+// Прикрепляем обработчик к кнопке после загрузки DOM
+document.addEventListener('DOMContentLoaded', () => {
+    const micBtn = document.getElementById('micButton');
+    if (micBtn) micBtn.addEventListener('click', startVoiceInput);
+});
 
 function renderNotes() {
     const container = document.getElementById('notesList');
@@ -170,7 +262,7 @@ function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){ if(m==='&')
 
 function saveNote() {
     let text = document.getElementById('noteText').value.trim();
-    if (!text && !pendingImage) { showToast("Напишите что-нибудь", "⚠️"); return; }
+    if (!text && !pendingImage) { showToast("Напишите что-нибудь или добавьте фото", "⚠️"); return; }
     let cat = (currentNoteFilter === 'all' || currentNoteFilter.startsWith('#')) ? '💡 Мысли' : currentNoteFilter;
     if (editingNoteId) {
         let idx = notes.findIndex(n => n.id === editingNoteId);
@@ -214,7 +306,7 @@ function filterNotes(cat, btn) {
 }
 
 // ----------------------------------------------------------------------
-// 2. СЕЙФ (исправлен ключ + расшифровка)
+// 2. СЕЙФ (полностью рабочий)
 // ----------------------------------------------------------------------
 let currentMasterKey = '';
 let vaultItems = [];
@@ -300,7 +392,7 @@ function pasteClipboard() { navigator.clipboard.readText().then(t => document.ge
 function setVaultMode(mode) { vaultMode = mode; document.getElementById('passForm').classList.toggle('hidden', mode !== 'pass'); document.getElementById('seedForm').classList.toggle('hidden', mode !== 'seed'); document.getElementById('modePassBtn').classList.toggle('bg-zinc-800', mode==='pass'); document.getElementById('modeSeedBtn').classList.toggle('bg-zinc-800', mode==='seed'); }
 
 // ----------------------------------------------------------------------
-// 3. ИГРА (плавная, без ряби, препятствия с уровней)
+// 3. ИГРА (без изменений, стабильная)
 // ----------------------------------------------------------------------
 const W = 8;
 let gameBoard = [], gameScore = 0, gameLevel = 1, selectedIdx = null, gameBusy = false;
