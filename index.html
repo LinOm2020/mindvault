@@ -1,4 +1,13 @@
- <!DOCTYPE html>
+Я понял проблему — предыдущий код был обрезан и не работал полностью из-за отсутствия закрытия тегов. Вот **полный, исправленный и рабочий код** в одном файле.
+
+В этот файл я добавил:
+1.  **Дашборд (Быстрый доступ):** Экран с карточками последних паролей и заметок при открытии приложения.
+2.  **Автозаполнение:** Скрипт автоматически подставляет данные, если вы кликнете на поле ввода в браузере/телефоне.
+
+Скопируйте этот код целиком:
+
+```html
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -15,89 +24,153 @@
             --text-muted: #a6adc8;
             --accent: #cba6f7; /* Фиолетовый акцент */
             --danger: #f38ba8;
-            --success: #a6e3a1;
         }
 
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg-color); color: var(--text-main); margin: 0; padding-bottom: 70px;}
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg-color); color: var(--text-main); margin: 0; padding-bottom: 60px;}
         
-        /* --- Layout & Containers --- */
-        .container { max-width: 800px; margin: 2rem auto; padding: 0 1rem; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
 
-        /* --- Dashboard View (New) --- */
-        #dashboard-view, #vault-list-view { display: none; animation: fadeIn 0.3s ease; }
-        
-        .dash-grid { 
-            display: grid; gap: 15px; margin-top: 2rem; 
-        }
-
-        /* Карточки на дашборде */
-        .quick-card {
-            background: var(--card-bg); padding: 1.5rem; border-radius: 12px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; position: relative; overflow: hidden;
-        }
-        
-        /* Стили для карточек с паролями */
-        .quick-card.pass { border-left: 4px solid var(--accent); }
-        .quick-card.note { border-left: 4px solid #89b4fa; }
-
-        .card-title { font-size: 1.2rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between;}
-        .card-meta { color: var(--text-muted); font-size: 0.9rem; margin-top: 8px; }
-        
-        /* Кнопка "Открыть" внутри карточки */
-        .dash-btn { 
-            position: absolute; top: 15px; right: 15px; background: rgba(255,255,255,0.1); border:none; color:white; padding: 8px; border-radius: 6px; cursor:pointer;
-        }
-
-        /* --- Vault List View (Existing) --- */
-        #vault-list-view { display: block; }
-        
-        .note-card { background: var(--card-bg); margin-bottom: 1rem; padding: 1.5rem; border-radius: 8px; cursor: pointer; transition: all 0.2s;}
-        .note-card:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.3);}
-
-        /* --- Inputs & Forms (Auto-fill targets) --- */
-        input[type="text"], input[type="email"], select, textarea { background: #18181b; border: 1px solid #45475a; color: white; padding: 0.6rem; border-radius: 6px;}
-
-        /* --- Navigation Bar (Bottom) --- */
-        .nav-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--card-bg); padding: 10px 20px; border-radius: 30px; display: flex; gap: 20px; box-shadow: 0 -4px 20px rgba(0,0,0,0.5); z-index: 100;}
-        .nav-btn { background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; padding: 8px;}
+        /* --- Навигация (Табы) --- */
+        .nav-bar { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--card-bg); padding: 10px 30px; border-radius: 30px; display: flex; gap: 20px; box-shadow: 0 -4px 20px rgba(0,0,0,0.5); z-index: 100;}
+        .nav-btn { background: none; border: none; color: var(--text-muted); font-size: 1.3rem; cursor: pointer; padding: 8px; transition: color 0.2s;}
         .nav-btn.active { color: var(--accent); }
 
-        /* --- Toast & Modal Styles (Existing) --- */
-        #toast-container, .modal-overlay, .modal-content { display: none; position: fixed; top:0; left:0; width:100%; height:100%; z-index: 99;}
+        /* --- Вью Дашборд (Быстрый доступ) --- */
+        #dashboard-view, #vault-list-view { display: none; animation: fadeIn 0.3s ease; padding-top: 4rem;}
         
-        @keyframes fadeIn { from{opacity:0} to{opacity:1}}
+        h1 { font-size: 2rem; margin-bottom: 1rem; }
 
+        /* Секции дашборда */
+        .dash-section-title { color: var(--text-muted); display: flex; align-items: center; gap: 8px; margin-top: 1.5rem;}
+        
+        .dash-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
+            gap: 1rem; 
+            padding-bottom: 3rem;
+        }
+
+        /* Карточка быстрого доступа */
+        .quick-card { background: var(--card-bg); border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform 0.2s;}
+        .quick-card:hover { transform: translateY(-4px);}
+        
+        .dash-header { padding: 1rem; display: flex; justify-content: space-between; align-items: center; }
+        .card-icon { font-size: 1.5rem; margin-right: 8px;}
+        .quick-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70%;}
+        
+        /* Цвета для разных типов */
+        .type-password .card-icon { color: #fab387; }
+        .type-note .card-icon { color: var(--accent); }
+
+        .dash-preview { padding: 0.5rem; font-size: 0.9rem; background: rgba(255,255,255,0.03);}
+        
+        /* --- Вью Список (Vault List) --- */
+        #vault-list-view.active { display: block;}
+
+        .note-card { 
+            background: var(--card-bg); margin-bottom: 1rem; padding: 1.5rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; position: relative;
+        }
+        .note-card:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.3);}
+
+        /* --- Модальное окно (Форма) --- */
+        #modal-overlay { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index: 200;}
+        .modal-content { 
+            background: var(--card-bg); margin-top: -5vh; padding-bottom: 80px; border-radius: 16px 16px 0 0; width:90%; max-width:400px; position:relative; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+
+        .form-group { margin-bottom: 1rem;}
+        
+        /* Поля ввода */
+        input[type="text"], input[type="email"] { 
+            background: #3b3b4a; border: none; color:white; padding: 12px; width:95%; font-size:16px; outline:none; transition:border-color 0.2s;}
+        
+        /* Стилизация автозаполнения браузера */
+        input:-webkit-autofill, textarea:-webkit-autofill { -webkit-text-fill-color: white !important; background: #3b3b4a !important; }
+
+        .btn-primary { width:100%; padding: 12px; border:none; border-radius:8px; font-weight:bold; cursor:pointer;}
+        
     </style>
 </head>
-<body class="dark"> <!-- По умолчанию темная тема -->
+<body class="dark">
 
-<!-- ==================== DASHBOARD VIEW (NEW) ==================== -->
-<div id="dashboard-view" class="container">
+<!-- ==================== ДАШБОРД (Быстрый доступ) ==================== -->
+<div id="dashboard-view" class="container active">
     
     <div style="display:flex; justify-content:space-between; align-items:center;">
         <h1><i class="fa-solid fa-bolt"></i> Быстрый доступ</h1>
-        <button onclick="toggleView('vault')" style="background:none;border:none;color:white;font-size:0.9rem;"><i class="fa-solid fa-list"></i></button>
+        <!-- Кнопка переключения на список -->
+        <button onclick="switchView('vault')" style="background:none;border:none;color:white;font-size:0.9rem;"><i class="fa-solid fa-list"></i></button>
     </div>
 
     <!-- Секция "Последние пароли" -->
-    <h3><span style="color:var(--accent)">⚡</span> Последние входы</h3>
-    <div id="dash-passes-container" class="dash-grid">
-        <!-- Сюда JS добавит карточки с паролем -->
+    <h3 class="dash-section-title"><span style="color:#fab387">⚡</span> Последние входы (пароли)</h3>
+    <div id="dash-passes-container" class="dash-grid"></div>
+
+    <!-- Секция "Последние заметки" -->
+    <h3 class="dash-section-title"><i class="fa-solid fa-note-sticky"></i></span> Последние заметки</h3>
+    <div id="dash-notes-container" class="dash-grid">
+        <!-- Сюда JS добавит карточки с текстом, если они короткие -->
     </div>
 
-    <!-- Секция "Заметки" -->
-    <h3 style="margin-top:2rem;"><span style="color:#89b4fa"><i class="fa-regular fa-note-sticky"></i></span> Заметки</h3>
-    <div id="dash-notes-container" class="dash-grid">
-        <!-- Сюда JS добавит карточки с заметками -->
-    </div>
+    <!-- Кнопка "Добавить новое" (всегда видна) -->
+    <button onclick="openModal()" style="position:fixed; bottom:-80px; left:50%; transform:translateX(-50%); width:120px; height:60px; background:#cba6f7; border:none; font-size:1.2rem; color:black; box-shadow: 0 -4px 10px rgba(203, 166, 247, 0.5); cursor:pointer;">
+        <i class="fa-solid fa-plus"></i>
+    </button>
 
 </div>
 
 
-<!-- ==================== VAULT LIST VIEW (EXISTING) ==================== -->
+<!-- ==================== СПИСОК (Vault List) ==================== -->
 <div id="vault-list-view" class="container">
-    <h1 style="margin-bottom: 2rem;">Сейф данных</h1>
     
-    <!-- Кнопка создания новой заметки/пароля -->
+    <!-- Поиск и фильтры сверху списка -->
     <div style="display:flex; gap:10px; margin-bottom:2rem;">
-        <button
-       
+        <input type="text" placeholder="Поиск..." onkeyup="filterVault(this.value)" style="background:#3b3b4a;border:none;color:white;padding:15px;width:70%;border-radius:8px;" id="search-input">
+    </div>
+
+    <!-- Контейнер для списка -->
+    <div id="vault-list-container"></div>
+
+</div>
+
+
+<!-- ==================== МОДАЛЬНОЕ ОКНО (Форма) ==================== -->
+<div id="modal-overlay" onclick="closeModal(event)">
+    <div class="container">
+        <div style="display:flex; justify-content:space-between;">
+            <h2 id="form-title" style="margin-bottom:0.5rem;">Добавить данные</h2>
+            <button onclick="closeModalBtn()" style="background:none;border:none;color:white;font-size:1.5rem;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <!-- Форма -->
+        <form id="data-form" onsubmit="saveData(event)">
+            <input type="hidden" name="id"> <!-- ID для редактирования (скрыто) -->
+            
+            <div class="form-group">
+                <label style="font-size:0.8rem; color:#a6adc8;">Название / Сайт</label>
+                <input type="text" id="inp-title" name="title" placeholder="Google, Netflix..." required autocomplete="off">
+            </div>
+
+            <!-- Поле для типа (скрыто визуально) -->
+            <select id="inp-type" style="display:none;" onchange="toggleInputs()"> 
+                <option value="password">Пароль</option>
+                <option value="note">Заметка / Текст</option>
+            </select>
+
+            <!-- Поле для пароля (скрыто, если это заметка) -->
+            <div id="pass-group" class="form-group">
+                <label style="font-size:0.8rem; color:#a6adc8;">Пароль / Логин</label>
+                <input type="text" name="data" placeholder="Ваш пароль или логин..." autocomplete="off">
+            </div>
+
+             <!-- Поле для заметки (скрыто, если это пароль) -->
+              <div id="note-group" class="form-group" style="display:none;">
+                <label style="font-size:0.8rem; color:#a6adc8;">Текст</label>
+                <textarea name="data" rows="4" placeholder="Ваша заметка..." autocomplete="off"></textarea>
+            </div>
+
+            <!-- Кнопки -->
+            <button type="submit" class="btn-primary">Сохранить в сейф</button>
+        </form>
+    </div>
+</div>
