@@ -3,245 +3,367 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#09090b">
-    <title>MindVault Pro | Игра с анимацией</title>
+    <title>MindVault Pro — стабильная версия</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        accent: 'var(--color-accent)',
-                        accentHover: 'var(--color-accent-hover)',
-                        crypto: '#06b6d4'
-                    }
-                }
-            }
-        }
-    </script>
     <style>
         :root { --color-accent: #f43f5e; --color-accent-hover: #e11d48; }
-        * { box-sizing: border-box; }
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            -webkit-tap-highlight-color: transparent;
-            overflow-x: hidden;
-            transition: background-color 0.15s, color 0.15s;
-        }
-        .custom-scroll { -webkit-overflow-scrolling: touch; }
-        .nav-btn { min-height: 44px; min-width: 60px; justify-content: center; }
-        .nav-safe { padding-bottom: max(0.625rem, env(safe-area-inset-bottom)); }
-        .main-safe { padding-bottom: max(5.5rem, calc(4.5rem + env(safe-area-inset-bottom))); }
-        .custom-scroll::-webkit-scrollbar { width: 3px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .tab-active { background-color: var(--color-accent) !important; color: white !important; }
-        textarea:focus, input:focus { outline: none; border-color: var(--color-accent) !important; }
-        html.light body { background-color: #f4f4f5; color: #18181b; }
-        
+        * { box-sizing: border-box; user-select: none; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: #09090b; color: #fafafa; transition: background 0.2s; }
+        html.light body { background: #f4f4f5; color: #18181b; }
+        .nav-btn { min-height: 44px; }
+        .main-safe { padding-bottom: 5rem; }
         .game-grid {
             display: grid;
             grid-template-columns: repeat(8, 1fr);
-            gap: 4px;
-            width: 100%;
+            gap: 5px;
             aspect-ratio: 1 / 1;
-            background-color: rgba(0,0,0,0.25);
-            border-radius: 12px;
-            padding: 6px;
-            box-shadow: inset 0 4px 10px rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            padding: 8px;
         }
         .candy {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: clamp(1.3rem, 6vw, 2rem);
-            border-radius: 10px;
-            background: rgba(255,255,255,0.07);
+            font-size: 1.5rem;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.08);
             cursor: pointer;
-            transition: transform 0.1s ease, filter 0.1s;
+            transition: transform 0.05s linear, filter 0.1s;
             backdrop-filter: blur(2px);
         }
         html.light .candy { background: rgba(0,0,0,0.05); }
-        .candy.selected { transform: scale(1.1); background: var(--color-accent); box-shadow: 0 0 0 2px white, 0 4px 12px black; }
-        .candy:active { transform: scale(0.95); }
-        .pop-animation { animation: popOff 0.15s cubic-bezier(0.34, 1.2, 0.64, 1) forwards !important; }
-        @keyframes popOff { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(0); opacity: 0; } }
-        .fall-animation { animation: fallDrop 0.25s ease-out; }
-        @keyframes fallDrop { from { transform: translateY(-40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .bomb-shake { animation: bombPulse 0.25s infinite alternate; }
-        @keyframes bombPulse { from { filter: drop-shadow(0 0 2px red); transform: scale(1); } to { filter: drop-shadow(0 0 12px #ff5555); transform: scale(1.1); } }
-        .plane-fly { position: fixed; z-index: 200; font-size: 2.5rem; pointer-events: none; transition: transform 0.02s linear; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)); }
-        .ice-crack { background: linear-gradient(135deg, #a0e7ff80, #6bc9ff80); border-radius: 10px; }
-        .wall-crack { background: linear-gradient(135deg, #8b5a2b80, #5a3a1a80); border-radius: 10px; }
-        @keyframes toast-in { from { opacity: 0; transform: translate(-50%, -12px); } to { opacity: 1; transform: translate(-50%, 0); } }
-        @keyframes toast-out { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -12px); } }
-        .toast-show { animation: toast-in 0.25s ease forwards; }
-        .toast-hide { animation: toast-out 0.25s ease forwards; }
+        .candy.selected { transform: scale(1.05); background: var(--color-accent); box-shadow: 0 0 0 2px white; }
+        .pop-effect { animation: pop 0.12s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+        @keyframes pop { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(0.2); opacity: 0; } }
+        .fall-effect { animation: fall 0.2s ease-out; }
+        @keyframes fall { from { transform: translateY(-35px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .bomb-pulse { animation: pulse 0.2s infinite alternate; }
+        @keyframes pulse { from { filter: drop-shadow(0 0 2px red); } to { filter: drop-shadow(0 0 10px #ff4444); } }
+        .plane-fly {
+            position: fixed;
+            font-size: 2rem;
+            pointer-events: none;
+            z-index: 200;
+            filter: drop-shadow(0 4px 6px black);
+            transition: none;
+        }
+        .toast { animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+        .tab-active { background-color: var(--color-accent) !important; color: white !important; }
+        .note-tab-btn { transition: all 0.2s; }
     </style>
 </head>
-<body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col dark">
-    <div id="toast" role="alert" class="fixed top-5 left-1/2 -translate-x-1/2 bg-zinc-800 border border-zinc-700 text-sm px-4 py-3 rounded-xl shadow-2xl z-50 pointer-events-none text-white flex items-center gap-2 hidden max-w-[calc(100vw-2rem)]">
-        <span id="toast-icon"></span><span id="toast-text"></span>
-    </div>
-    <div id="photo-modal" onclick="closePhotoModal()" class="fixed inset-0 bg-black/92 z-50 hidden items-center justify-center p-4">
-        <img id="modal-img" src="" class="max-w-full max-h-full rounded-xl object-contain shadow-2xl">
-        <button class="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white text-lg">✕</button>
+<body class="dark">
+    <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 bg-zinc-800 text-white px-4 py-2 rounded-xl z-50 hidden text-sm"></div>
+    <div id="photo-modal" class="fixed inset-0 bg-black/90 hidden items-center justify-center z-50" onclick="closePhotoModal()">
+        <img id="modal-img" class="max-w-[90%] max-h-[90%] rounded-2xl">
+        <button class="absolute top-5 right-5 text-2xl">✕</button>
     </div>
 
-    <main id="main" class="w-full max-w-md mx-auto px-4 pt-6 flex-1 flex flex-col gap-4 main-safe">
-        <header class="flex items-center justify-between">
-            <div><h1 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">MindVault <span style="color:var(--color-accent)">Pro</span></h1>
-            <p class="text-[11px] text-zinc-500 mt-0.5" id="sw-status-text">Готов к работе</p></div>
-            <div class="flex items-center gap-2"><span id="sw-badge" class="text-[10px] font-bold px-2 py-1 rounded-md bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-500">Push: —</span></div>
+    <main class="max-w-md mx-auto px-4 pt-5 pb-20 flex flex-col gap-5">
+        <header class="flex justify-between items-center">
+            <div><h1 class="text-2xl font-bold">MindVault <span style="color:var(--color-accent)">Pro</span></h1><p class="text-[11px] text-zinc-500">Локальный сейф + игра</p></div>
+            <span id="sw-status" class="text-[10px] bg-zinc-800 px-2 py-1 rounded">офлайн</span>
         </header>
 
-        <section id="section-notes" class="flex flex-col gap-4">
-            <div id="edit-indicator" class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-center justify-between hidden">
-                <span class="text-xs font-semibold text-amber-500">✏️ Режим редактирования</span>
-                <button onclick="cancelEdit()" class="text-[11px] bg-amber-500/20 text-amber-500 px-2.5 py-1 rounded-lg">Отмена</button>
+        <!-- ЗАМЕТКИ -->
+        <section id="notes-section">
+            <div id="edit-bar" class="hidden bg-amber-500/20 p-3 rounded-xl justify-between mb-3"><span>✏️ Редактирование</span><button onclick="cancelEditNote()">Отмена</button></div>
+            <div class="flex gap-2 overflow-auto pb-2">
+                <button onclick="filterNotes('all',this)" class="note-tab-btn tab-active px-3 py-1 rounded-lg text-sm font-semibold">Все</button>
+                <button onclick="filterNotes('💡 Мысли',this)" class="note-tab-btn px-3 py-1 rounded-lg bg-zinc-800 text-zinc-300">💡 Мысли</button>
+                <button onclick="filterNotes('📅 Задачи',this)" class="note-tab-btn px-3 py-1 rounded-lg bg-zinc-800 text-zinc-300">📅 Задачи</button>
+                <button onclick="filterNotes('💼 Работа',this)" class="note-tab-btn px-3 py-1 rounded-lg bg-zinc-800 text-zinc-300">💼 Работа</button>
             </div>
-            <div class="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs" id="filter-tabs">
-                <button onclick="filterNotes('all', this)" class="note-tab-btn tab-active px-3 py-1.5 rounded-lg font-semibold whitespace-nowrap transition-all border border-transparent">Все</button>
-                <button onclick="filterNotes('💡 Мысли', this)" class="note-tab-btn px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-semibold whitespace-nowrap transition-all">💡 Мысли</button>
-                <button onclick="filterNotes('📅 Задачи', this)" class="note-tab-btn px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-semibold whitespace-nowrap transition-all">📅 Задачи</button>
-                <button onclick="filterNotes('💼 Работа', this)" class="note-tab-btn px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-semibold whitespace-nowrap transition-all">💼 Работа</button>
+            <div class="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4">
+                <textarea id="noteText" class="w-full bg-zinc-950 rounded-xl p-3 text-sm border border-zinc-800 h-24 resize-none" placeholder="Текст заметки, #тег, **жирный**..."></textarea>
+                <div id="imgPreview" class="hidden mt-2 w-16 h-16 relative"><img id="previewImg" class="rounded-lg object-cover w-full h-full"><button onclick="clearImage()" class="absolute -top-1 -right-1 bg-black rounded-full w-5 h-5 text-xs">✕</button></div>
+                <div class="flex justify-between mt-3"><label class="bg-zinc-800 px-3 py-2 rounded-xl text-xs cursor-pointer">📷 Прикрепить фото<input type="file" id="photoInput" accept="image/*" class="hidden"></label><button onclick="saveNote()" class="px-4 py-2 rounded-xl text-white text-xs font-bold" style="background:var(--color-accent)">Сохранить</button></div>
             </div>
-            <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xl">
-                <textarea id="note-input" class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 h-24 resize-none transition-colors" placeholder="Заметка, #тег или **жирный** текст..."></textarea>
-                <div id="image-preview-container" class="hidden relative mt-2 w-20 h-20 border border-zinc-200 dark:border-zinc-700 rounded-xl overflow-hidden flex-shrink-0">
-                    <img id="image-preview" class="w-full h-full object-cover">
-                    <button onclick="clearAttachedImage()" class="absolute top-0 right-0 bg-black/70 text-white rounded-bl-xl w-6 h-6 flex items-center justify-center text-[10px]">✕</button>
-                </div>
-                <div class="flex items-center justify-between mt-3 gap-2">
-                    <label class="cursor-pointer flex items-center gap-1.5 px-3 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors">
-                        📷 Фото
-                        <input type="file" id="note-image-input" accept="image/*" class="hidden" onchange="previewImage(this)">
-                    </label>
-                    <button onclick="saveNote()" id="btn-save-note" class="px-5 py-2 rounded-xl text-xs font-bold text-white shadow-md active:scale-95 transition-transform" style="background-color:var(--color-accent)">Сохранить</button>
-                </div>
-            </div>
-            <div id="notes-list" class="flex flex-col gap-3 overflow-y-auto custom-scroll" style="max-height:44vh"></div>
+            <div id="notesList" class="flex flex-col gap-3 max-h-96 overflow-auto mt-2"></div>
         </section>
 
-        <section id="section-crypto" class="flex flex-col gap-4 hidden">
-            <div id="crypto-auth" class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 text-center shadow-xl">
-                <div class="w-12 h-12 rounded-full bg-cyan-500/10 text-cyan-500 flex items-center justify-center mx-auto mb-3">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                </div>
-                <h3 class="text-sm font-bold text-zinc-900 dark:text-white mb-1">Секретный Сейф</h3>
-                <p class="text-[11px] text-zinc-500 mb-4">Локальное шифрование AES-256</p>
-                <input type="password" id="master-password" class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-center text-sm tracking-widest mb-3" placeholder="Мастер-пароль" onkeydown="if(event.key==='Enter')unlockVault()">
-                <button onclick="unlockVault()" id="btn-unlock" class="w-full py-2.5 bg-cyan-500 hover:bg-cyan-600 rounded-xl text-xs font-bold text-white shadow-lg">Открыть сейф</button>
+        <!-- СЕЙФ -->
+        <section id="crypto-section" class="hidden">
+            <div id="cryptoLock" class="bg-zinc-900 rounded-2xl p-6 text-center">
+                <div class="w-12 h-12 mx-auto bg-cyan-500/20 rounded-full flex items-center justify-center text-cyan-500 mb-3">🔐</div>
+                <h3 class="font-bold mb-1">Секретный сейф</h3>
+                <p class="text-xs text-zinc-500 mb-4">AES-256, всё локально</p>
+                <input type="password" id="masterPass" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-center mb-3" placeholder="Мастер-пароль">
+                <button onclick="unlockVault()" class="w-full bg-cyan-600 py-2 rounded-xl text-sm font-bold">Открыть сейф</button>
             </div>
-            <div id="crypto-content" class="flex flex-col gap-4 hidden">
-                <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xl">
-                    <div class="flex gap-2 mb-3 text-xs bg-zinc-100 dark:bg-zinc-950 p-1 rounded-xl">
-                        <button onclick="setVaultType('pass')" id="vt-pass" class="flex-1 py-1.5 rounded-lg bg-white dark:bg-zinc-800 shadow text-zinc-900 dark:text-white font-semibold transition-all">Пароль</button>
-                        <button onclick="setVaultType('seed')" id="vt-seed" class="flex-1 py-1.5 rounded-lg text-zinc-500 dark:text-zinc-500 font-semibold transition-all">Seed-фраза</button>
+            <div id="cryptoContent" class="hidden flex flex-col gap-4">
+                <div class="bg-zinc-900 rounded-2xl p-4">
+                    <div class="flex gap-2 text-xs bg-zinc-950 p-1 rounded-xl mb-3"><button onclick="setVaultMode('pass')" id="modePassBtn" class="flex-1 py-1 rounded-lg bg-zinc-800">Пароль</button><button onclick="setVaultMode('seed')" id="modeSeedBtn" class="flex-1 py-1 rounded-lg">Seed</button></div>
+                    <div id="passForm">
+                        <input type="text" id="vaultTitle" class="w-full bg-zinc-950 rounded-xl p-2 text-sm mb-2" placeholder="Ресурс / Название">
+                        <input type="text" id="vaultLogin" class="w-full bg-zinc-950 rounded-xl p-2 text-sm mb-2" placeholder="Логин (опционально)">
+                        <div class="flex gap-2"><input type="password" id="vaultSecret" class="flex-1 bg-zinc-950 rounded-xl p-2 text-sm" placeholder="Пароль / секрет"><button onclick="toggleSecretField()" class="px-3 bg-zinc-800 rounded-xl">👁</button><button onclick="genPassword()" class="px-3 bg-zinc-800 rounded-xl">⚡</button><button onclick="pasteClipboard()" class="px-3 bg-zinc-800 rounded-xl">📋</button></div>
                     </div>
-                    <div id="form-pass">
-                        <div class="grid grid-cols-2 gap-2 mb-2">
-                            <input type="text" id="pw-title" class="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs" placeholder="Ресурс">
-                            <input type="text" id="pw-login" class="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs" placeholder="Логин">
-                        </div>
-                        <div class="relative mb-3 flex gap-1.5">
-                            <div class="relative flex-1"><input type="password" id="pw-value" class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-3 pr-9 py-2.5 text-xs" placeholder="Пароль"><button onclick="toggleFieldType('pw-value')" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400">👁</button></div>
-                            <button onclick="generateSecurePassword()" class="px-2.5 bg-zinc-100 dark:bg-zinc-800 border rounded-xl hover:text-cyan-500">⚡</button>
-                            <button onclick="pasteFromClipboard('pw-value')" class="px-2.5 bg-zinc-100 dark:bg-zinc-800 border rounded-xl hover:text-cyan-500">📋</button>
-                        </div>
+                    <div id="seedForm" class="hidden">
+                        <input type="text" id="seedTitle" class="w-full bg-zinc-950 rounded-xl p-2 text-sm mb-2" placeholder="Название кошелька">
+                        <textarea id="seedPhrase" class="w-full bg-zinc-950 rounded-xl p-2 text-sm h-20 font-mono" placeholder="12/24 слова"></textarea>
                     </div>
-                    <div id="form-seed" class="hidden">
-                        <input type="text" id="seed-title" class="w-full mb-2 bg-zinc-50 dark:bg-zinc-950 border rounded-xl p-2.5 text-xs" placeholder="Название кошелька">
-                        <textarea id="seed-value" class="w-full bg-zinc-50 dark:bg-zinc-950 border rounded-xl p-3 text-xs h-20 resize-none font-mono" placeholder="12 или 24 слова"></textarea>
-                    </div>
-                    <button onclick="saveVaultEntry()" class="w-full py-2 bg-cyan-500 hover:bg-cyan-600 rounded-xl text-xs font-bold text-white">Зашифровать и сохранить</button>
+                    <button onclick="saveVaultEntry()" class="w-full mt-3 bg-cyan-600 py-2 rounded-xl text-sm font-bold">Добавить и зашифровать</button>
                 </div>
-                <div id="passwords-list" class="flex flex-col gap-2 overflow-y-auto custom-scroll" style="max-height:35vh"></div>
+                <div id="vaultList" class="flex flex-col gap-2 max-h-80 overflow-auto"></div>
             </div>
         </section>
 
-        <section id="section-game" class="flex flex-col gap-4 hidden h-full justify-center pb-10">
-            <div class="flex items-center justify-between px-2 font-bold"><div>Уровень <span id="game-level" class="text-accent text-lg">1</span></div><div>Счет: <span id="game-score" class="text-lg">0</span></div></div>
-            <div class="game-grid" id="game-board"></div>
-            <p class="text-center text-[10px] text-zinc-500 mt-2 font-medium bg-zinc-100 dark:bg-zinc-900 p-2 rounded-lg">⭐ 4 в ряд → 💣 (3x3)<br>🌀 Квадрат 2x2 → ✈️ (5 случайных)<br>❄️ Лёд (2 удара) | 🧱 Стена (3 удара)</p>
+        <!-- ИГРА -->
+        <section id="game-section" class="hidden">
+            <div class="flex justify-between font-bold px-2"><span>Уровень <span id="gameLevel">1</span></span><span>Счёт <span id="gameScore">0</span></span></div>
+            <div class="game-grid" id="gameGrid"></div>
+            <p class="text-[11px] text-center text-zinc-500 mt-2">🔴🟡🟢 4 в ряд → 💣 (3x3) | Квадрат 2x2 → ✈️ (5 рандом) | ❄️ лёд (2 удара) | 🧱 стена (3 удара)</p>
         </section>
 
-        <section id="section-settings" class="flex flex-col gap-4 hidden">
-            <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xl flex flex-col gap-4">
-                <h3 class="text-sm font-bold border-b pb-2">Внешний вид</h3>
-                <div class="flex items-center justify-between text-xs"><span>Тема</span><button onclick="toggleTheme()" id="theme-toggle-btn" class="px-3 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-xl font-bold">☀️ Светлая</button></div>
-                <div><span class="text-xs font-semibold">Акцентный цвет</span><div class="flex gap-3 mt-1"><button onclick="setAccentColor('#f43f5e','#e11d48',this)" class="w-9 h-9 rounded-full border-2" style="background:#f43f5e"></button><button onclick="setAccentColor('#3b82f6','#2563eb',this)" class="w-9 h-9 rounded-full border-2" style="background:#3b82f6"></button><button onclick="setAccentColor('#10b981','#059669',this)" class="w-9 h-9 rounded-full border-2" style="background:#10b981"></button></div></div>
+        <!-- НАСТРОЙКИ -->
+        <section id="settings-section" class="hidden">
+            <div class="bg-zinc-900 rounded-2xl p-4 flex flex-col gap-4">
+                <div class="flex justify-between"><span>🌙 Тема</span><button onclick="toggleTheme()" class="px-4 py-1 bg-zinc-800 rounded-xl text-sm">Тёмная</button></div>
+                <div><span>🎨 Акцент</span><div class="flex gap-3 mt-2"><div onclick="setAccent('#f43f5e')" class="w-8 h-8 rounded-full bg-rose-500"></div><div onclick="setAccent('#3b82f6')" class="w-8 h-8 rounded-full bg-blue-500"></div><div onclick="setAccent('#10b981')" class="w-8 h-8 rounded-full bg-emerald-500"></div><div onclick="setAccent('#a855f7')" class="w-8 h-8 rounded-full bg-purple-500"></div></div></div>
+                <div class="flex gap-2"><button onclick="exportAll()" class="flex-1 py-2 bg-zinc-800 rounded-xl text-sm">📦 Экспорт</button><label class="flex-1 py-2 bg-zinc-800 rounded-xl text-sm text-center cursor-pointer">📥 Импорт<input type="file" id="importFile" class="hidden" accept=".json"></label></div>
             </div>
-            <div class="bg-white dark:bg-zinc-900 border rounded-2xl p-4 shadow-xl flex gap-2 text-xs"><button onclick="exportData()" class="flex-1 py-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-xl font-bold">📦 Экспорт</button><label class="flex-1 py-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-xl font-bold text-center cursor-pointer">📥 Импорт<input type="file" accept=".json" class="hidden" onchange="importData(this)"></label></div>
-            <a href="https://t.me/cryptolaik" target="_blank" class="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-900 border rounded-2xl p-4"><div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:rgba(0,136,204,0.12)"><svg width="20" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8l-1.68 7.94c-.13.58-.47.72-.95.45l-2.62-1.93-1.27 1.22c-.14.14-.26.26-.53.26l.19-2.7 4.9-4.43c.21-.19-.05-.29-.33-.1L7.28 14.4l-2.56-.8c-.56-.17-.57-.56.12-.83l10.01-3.86c.46-.17.87.11.79.89z" fill="#0088cc"/></svg></div><div><p class="text-xs font-bold">Канал разработчика</p><p class="text-[11px] text-zinc-500">@cryptolaik</p></div></a>
         </section>
     </main>
 
-    <nav class="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800 z-40 nav-safe shadow-lg">
-        <div class="max-w-md mx-auto flex justify-around items-center pt-2">
-            <button onclick="switchTab('notes')" id="nav-notes" class="nav-btn flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all text-accent"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span class="text-[10px] font-bold">Заметки</span></button>
-            <button onclick="switchTab('crypto')" id="nav-crypto" class="nav-btn flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all text-zinc-400"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span class="text-[10px] font-bold">Сейф</span></button>
-            <button onclick="switchTab('game')" id="nav-game" class="nav-btn flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all text-zinc-400"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4"/><path d="M8 10v4"/><circle cx="15" cy="13" r="1"/><circle cx="18" cy="11" r="1"/></svg><span class="text-[10px] font-bold">Отдых</span></button>
-            <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all text-zinc-400"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span class="text-[10px] font-bold">Опции</span></button>
+    <nav class="fixed bottom-0 left-0 right-0 bg-zinc-900/90 backdrop-blur-lg border-t border-zinc-800 py-2">
+        <div class="max-w-md mx-auto flex justify-around">
+            <button onclick="switchTab('notes')" id="tabNotes" class="nav-btn flex flex-col items-center text-accent"><span class="text-xl">📝</span><span class="text-[10px]">Заметки</span></button>
+            <button onclick="switchTab('crypto')" id="tabCrypto" class="nav-btn flex flex-col items-center text-zinc-500"><span class="text-xl">🔐</span><span class="text-[10px]">Сейф</span></button>
+            <button onclick="switchTab('game')" id="tabGame" class="nav-btn flex flex-col items-center text-zinc-500"><span class="text-xl">🎮</span><span class="text-[10px]">Игра</span></button>
+            <button onclick="switchTab('settings')" id="tabSettings" class="nav-btn flex flex-col items-center text-zinc-500"><span class="text-xl">⚙️</span><span class="text-[10px]">Настройки</span></button>
         </div>
     </nav>
 
 <script>
-// ==================== ОСНОВНЫЕ МОДУЛИ (ЗАМЕТКИ + СЕЙФ) ====================
-let notes = [], currentFilter = 'all', editingNoteId = null, attachedImageBase64 = null, currentMasterKey = '', vaultData = null, vaultType = 'pass';
-function loadNotes() { try { notes = JSON.parse(localStorage.getItem('mv_notes')) || []; } catch(e){} renderNotes(); }
-function saveNotesToStorage() { localStorage.setItem('mv_notes', JSON.stringify(notes)); }
-function escapeHtml(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
-function renderNotes() {
-    const list = document.getElementById('notes-list'); if(!list) return; list.innerHTML = '';
-    const filtered = currentFilter === 'all' ? notes : notes.filter(n => n.category === currentFilter || (currentFilter.startsWith('#') && n.text.includes(currentFilter)));
-    if(filtered.length === 0){ list.innerHTML = '<div class="text-center py-8 text-zinc-500 text-xs">Ничего не найдено</div>'; return; }
-    filtered.forEach(n => { list.innerHTML += `<div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 flex flex-col gap-2"><div class="flex justify-between"><span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800">${n.category}</span><span class="text-[10px] text-zinc-500">${n.date||''}</span></div>${n.image ? `<img src="${n.image}" onclick="openPhotoModal('${n.image}')" class="w-full h-32 object-cover rounded-lg">` : ''}<div class="text-xs">${escapeHtml(n.text)}</div><div class="flex gap-2 justify-end"><button onclick="editNote(${n.id})" class="text-zinc-400 hover:text-amber-500">✏️</button><button onclick="deleteNote(${n.id})" class="text-zinc-400 hover:text-red-500">🗑</button></div></div>`; });
-}
-function saveNote(){ const txt=document.getElementById('note-input').value.trim(); if(!txt&&!attachedImageBase64) return; const cat = (currentFilter==='all'||currentFilter.startsWith('#'))?'💡 Мысли':currentFilter; if(editingNoteId){ notes=notes.map(n=>n.id===editingNoteId?{...n,text:txt,category:cat,image:attachedImageBase64??n.image}:n); cancelEdit(); }else{ notes.unshift({id:Date.now(),text:txt,category:cat,date:new Date().toLocaleDateString('ru'),image:attachedImageBase64}); } saveNotesToStorage(); document.getElementById('note-input').value=''; clearAttachedImage(); renderNotes(); showToast('Сохранено!','✅'); }
-function editNote(id){ const n=notes.find(x=>x.id===id); if(n){ editingNoteId=id; document.getElementById('note-input').value=n.text; if(n.image){ attachedImageBase64=n.image; document.getElementById('image-preview').src=n.image; document.getElementById('image-preview-container').classList.remove('hidden'); }else clearAttachedImage(); document.getElementById('edit-indicator').classList.remove('hidden'); } }
-function deleteNote(id){ if(confirm('Удалить?')){ notes=notes.filter(n=>n.id!==id); saveNotesToStorage(); renderNotes(); } }
-function cancelEdit(){ editingNoteId=null; document.getElementById('note-input').value=''; document.getElementById('edit-indicator').classList.add('hidden'); clearAttachedImage(); }
-function clearAttachedImage(){ attachedImageBase64=null; document.getElementById('note-image-input').value=''; document.getElementById('image-preview-container').classList.add('hidden'); }
-function previewImage(input){ const f=input.files[0]; if(f){ const r=new FileReader(); r.onload=e=>{ attachedImageBase64=e.target.result; document.getElementById('image-preview').src=e.target.result; document.getElementById('image-preview-container').classList.remove('hidden'); }; r.readAsDataURL(f); } }
-function openPhotoModal(src){ document.getElementById('modal-img').src=src; document.getElementById('photo-modal').classList.remove('hidden'); document.getElementById('photo-modal').classList.add('flex'); }
-function closePhotoModal(){ document.getElementById('photo-modal').classList.add('hidden'); }
-function filterNotes(cat,btn){ currentFilter=cat; renderNotes(); document.querySelectorAll('.note-tab-btn').forEach(b=>{ b.classList.remove('tab-active'); b.classList.add('bg-white','dark:bg-zinc-800'); }); if(btn){ btn.classList.add('tab-active'); btn.classList.remove('bg-white','dark:bg-zinc-800'); btn.style.backgroundColor='var(--color-accent)'; } }
-function setVaultType(type){ vaultType=type; document.getElementById('form-pass').classList.toggle('hidden',type!=='pass'); document.getElementById('form-seed').classList.toggle('hidden',type!=='seed'); }
-function unlockVault(){ const pass=document.getElementById('master-password').value; if(!pass)return; currentMasterKey=CryptoJS.SHA256(pass).toString(); vaultData=localStorage.getItem('mv_vault'); if(vaultData){ try{ const bytes=CryptoJS.AES.decrypt(vaultData,currentMasterKey); if(!bytes.toString(CryptoJS.enc.Utf8))throw new Error(); }catch(e){ showToast('Неверный пароль!','❌'); currentMasterKey=''; return; } }else{ vaultData=CryptoJS.AES.encrypt("[]",currentMasterKey).toString(); localStorage.setItem('mv_vault',vaultData); } document.getElementById('crypto-auth').classList.add('hidden'); document.getElementById('crypto-content').classList.remove('hidden'); renderVault(); }
-function toggleFieldType(id){ const el=document.getElementById(id); el.type=el.type==='password'?'text':'password'; }
-function generateSecurePassword(){ const c="abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789!@#$%^&*"; let p=""; for(let i=0;i<16;i++)p+=c.charAt(Math.floor(Math.random()*c.length)); document.getElementById('pw-value').value=p; document.getElementById('pw-value').type='text'; }
-async function pasteFromClipboard(id){ try{ document.getElementById(id).value=await navigator.clipboard.readText(); }catch(e){ showToast('Нет доступа','⚠️'); } }
-function saveVaultEntry(){ let title,val,login=''; if(vaultType==='pass'){ title=document.getElementById('pw-title').value; login=document.getElementById('pw-login').value; val=document.getElementById('pw-value').value; }else{ title=document.getElementById('seed-title').value; val=document.getElementById('seed-value').value; } if(!title||!val){ showToast('Заполните поля','⚠️'); return; } const list=JSON.parse(CryptoJS.AES.decrypt(vaultData,currentMasterKey).toString(CryptoJS.enc.Utf8)); list.push({id:Date.now(),type:vaultType,title,login,val}); vaultData=CryptoJS.AES.encrypt(JSON.stringify(list),currentMasterKey).toString(); localStorage.setItem('mv_vault',vaultData); document.getElementById('pw-title').value=''; document.getElementById('pw-login').value=''; document.getElementById('pw-value').value=''; document.getElementById('seed-title').value=''; document.getElementById('seed-value').value=''; showToast('Зашифровано!','🛡'); renderVault(); }
-function renderVault(){ const list=document.getElementById('passwords-list'); if(!list)return; list.innerHTML=''; const arr=JSON.parse(CryptoJS.AES.decrypt(vaultData,currentMasterKey).toString(CryptoJS.enc.Utf8)); arr.forEach(p=>{ const isS=p.type==='seed'; list.innerHTML+=`<div class="bg-zinc-50 dark:bg-zinc-950 border rounded-xl p-3 text-xs"><div class="flex justify-between"><span class="font-bold">${escapeHtml(p.title)}</span><button onclick="navigator.clipboard.writeText('${p.val}');showToast('Скопировано','📋')" class="text-cyan-500">Копировать</button></div>${p.login?`<div class="text-zinc-500">${escapeHtml(p.login)}</div>`:''}<div class="mt-1">${isS?`<textarea readonly class="w-full bg-zinc-100 dark:bg-zinc-900 rounded p-2 text-[10px] font-mono">${p.val}</textarea>`:`<input type="password" id="h-${p.id}" value="${p.val}" readonly class="w-full bg-zinc-100 dark:bg-zinc-900 rounded p-2 text-[10px] font-mono outline-none"><button onclick="toggleFieldType('h-${p.id}')" class="text-xs">👁</button>`}</div><button onclick="deleteVaultEntry(${p.id})" class="text-red-400 text-xs mt-1">Удалить</button></div>`; }); }
-function deleteVaultEntry(id){ if(!confirm('Удалить?')) return; let arr=JSON.parse(CryptoJS.AES.decrypt(vaultData,currentMasterKey).toString(CryptoJS.enc.Utf8)); arr=arr.filter(x=>x.id!==id); vaultData=CryptoJS.AES.encrypt(JSON.stringify(arr),currentMasterKey).toString(); localStorage.setItem('mv_vault',vaultData); renderVault(); }
-function exportData(){ const data=JSON.stringify({notes,vault:localStorage.getItem('mv_vault')}); const blob=new Blob([data],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='backup.json'; a.click(); }
-function importData(input){ const f=input.files[0]; if(!f)return; const r=new FileReader(); r.onload=e=>{ const d=JSON.parse(e.target.result); notes=d.notes||[]; if(d.vault)localStorage.setItem('mv_vault',d.vault); saveNotesToStorage(); renderNotes(); showToast('Восстановлено!','✅'); }; r.readAsText(f); }
-function toggleTheme(){ const isDark=document.documentElement.classList.toggle('dark'); localStorage.setItem('mv_theme',isDark?'dark':'light'); document.getElementById('theme-toggle-btn').textContent=isDark?'☀️ Светлая':'🌙 Тёмная'; }
-function setAccentColor(p,h,el){ document.documentElement.style.setProperty('--color-accent',p); document.documentElement.style.setProperty('--color-accent-hover',h); localStorage.setItem('mv_accent',JSON.stringify({primary:p,hover:h})); }
-function switchTab(t){ ['notes','crypto','game','settings'].forEach(x=>document.getElementById(`section-${x}`).classList.toggle('hidden',x!==t)); }
-function showToast(msg,ic=''){ const t=document.getElementById('toast'); document.getElementById('toast-icon').textContent=ic; document.getElementById('toast-text').textContent=msg; t.classList.remove('hidden','toast-hide'); t.classList.add('toast-show'); setTimeout(()=>{ t.classList.replace('toast-show','toast-hide'); setTimeout(()=>t.classList.add('hidden'),250); },2500); }
-document.addEventListener('DOMContentLoaded',()=>{ loadNotes(); if(localStorage.getItem('mv_theme')==='light'){document.documentElement.classList.remove('dark');document.documentElement.classList.add('light');document.getElementById('theme-toggle-btn').textContent='🌙 Тёмная';} const ac=localStorage.getItem('mv_accent'); if(ac){ const c=JSON.parse(ac); document.documentElement.style.setProperty('--color-accent',c.primary); } initGame(); });
+// ----------------------------------------------------------------------
+// 1. ЗАМЕТКИ (полностью рабочие)
+// ----------------------------------------------------------------------
+let notes = JSON.parse(localStorage.getItem('mv_notes') || '[]');
+let currentNoteFilter = 'all';
+let editingNoteId = null;
+let pendingImage = null;
 
-// ==================== ИГРА ПОЛНОСТЬЮ ИСПРАВЛЕНА ====================
-const W=8; let board=[], score=0, level=1, selectedCell=null, isBusy=false;
-const COLORS=['🔴','🟡','🟢','🔵','🟣'], BOMB='💣', PLANE='✈️', ICE='❄️', WALL='🧱';
-class Cell{ constructor(type,color=null,hp=1){ this.type=type; this.color=color; this.hp=hp; } getDisplay(){ if(this.type==='bomb') return BOMB; if(this.type==='plane') return PLANE; if(this.type==='ice') return ICE; if(this.type==='wall') return WALL; return this.color; } clone(){ return new Cell(this.type,this.color,this.hp); } }
-function initGame(){ board=[]; score=0; level=1; updateUI(); selectedCell=null; isBusy=false; for(let i=0;i<W*W;i++) board.push(new Cell('normal',COLORS[Math.floor(Math.random()*COLORS.length)])); while(clearMatchesSilent()); renderBoard(); }
-function renderBoard(){ const c=document.getElementById('game-board'); if(!c)return; c.innerHTML=''; for(let i=0;i<board.length;i++){ const cell=board[i]; const div=document.createElement('div'); div.className='candy'; if(selectedCell===i) div.classList.add('selected'); if(cell.type==='ice') div.classList.add('ice-crack'); if(cell.type==='wall') div.classList.add('wall-crack'); div.innerHTML=cell.getDisplay(); div.onclick=()=>onCellClick(i); c.appendChild(div); } }
-function updateUI(){ document.getElementById('game-score').innerText=score; const lvl=Math.floor(score/150)+1; if(lvl>level){ level=lvl; showToast(`Уровень ${level}! 🎉 Новые препятствия!`,'🏆'); } document.getElementById('game-level').innerText=level; }
-async function onCellClick(idx){ if(isBusy) return; const cell=board[idx]; if(cell.type==='bomb'){ explodeBombArea(idx); return; } if(cell.type==='plane'){ activatePlane(idx); return; } if(selectedCell===null){ selectedCell=idx; renderBoard(); return; } const diff=Math.abs(selectedCell-idx); const sameRow=Math.floor(selectedCell/W)===Math.floor(idx/W); if((diff===1&&sameRow)||diff===W){ await trySwap(selectedCell,idx); } selectedCell=null; renderBoard(); }
-async function trySwap(a,b){ if(isBusy) return; isBusy=true; const temp=board[a].clone(); board[a]=board[b].clone(); board[b]=temp; renderBoard(); await new Promise(r=>setTimeout(r,80)); const hadMatch=await processAllMatches(true); if(!hadMatch){ const back=board[a].clone(); board[a]=board[b].clone(); board[b]=back; renderBoard(); } isBusy=false; }
-async function processAllMatches(awardPoints){ let any=false; while(true){ const matches=findAllMatches(); if(matches.size===0) break; any=true; const bombSpawn=new Set(), planeSpawn=new Set(); for(let pos of matches){ const cell=board[pos]; if(cell.type==='ice'||cell.type==='wall'){ cell.hp--; if(cell.hp<=0){ board[pos]=new Cell('normal',COLORS[Math.floor(Math.random()*COLORS.length)]); if(awardPoints) score+=5; }else{ if(awardPoints) score+=2; } continue; } if(cell.type==='normal'&&awardPoints) score+=10; if(cell.type==='bomb') bombSpawn.add(pos); if(cell.type==='plane') planeSpawn.add(pos); board[pos]=null; } for(let p of bombSpawn) board[p]=new Cell('bomb'); for(let p of planeSpawn) board[p]=new Cell('plane'); for(let i=0;i<board.length;i++) if(board[i]===null) board[i]=new Cell('normal',COLORS[Math.floor(Math.random()*COLORS.length)]); await applyGravity(); updateUI(); if(findAllMatches().size>0){ await processAllMatches(awardPoints); return true; } } if(any) updateUI(); return any; }
-function findAllMatches(){ const matches=new Set(); for(let r=0;r<W;r++) for(let c=0;c<W-2;c++){ const idx=r*W+c, cell=board[idx]; if(!cell||cell.type!=='normal') continue; let len=1; while(c+len<W&&board[r*W+c+len]?.type==='normal'&&board[r*W+c+len]?.color===cell.color) len++; if(len>=3){ for(let k=0;k<len;k++) matches.add(idx+k); if(len>=4){ const mid=idx+Math.floor(len/2); if(board[mid]?.type==='normal') board[mid]=new Cell('bomb'); } } c+=len-1; } for(let c=0;c<W;c++) for(let r=0;r<W-2;r++){ const idx=r*W+c, cell=board[idx]; if(!cell||cell.type!=='normal') continue; let len=1; while(r+len<W&&board[(r+len)*W+c]?.type==='normal'&&board[(r+len)*W+c]?.color===cell.color) len++; if(len>=3){ for(let k=0;k<len;k++) matches.add(idx+k*W); if(len>=4){ const mid=idx+Math.floor(len/2)*W; if(board[mid]?.type==='normal') board[mid]=new Cell('bomb'); } } r+=len-1; } for(let r=0;r<W-1;r++) for(let c=0;c<W-1;c++){ const a=board[r*W+c], b=board[r*W+c+1], c1=board[(r+1)*W+c], d=board[(r+1)*W+c+1]; if(a?.type==='normal'&&b?.type==='normal'&&c1?.type==='normal'&&d?.type==='normal'&&a.color===b.color&&a.color===c1.color&&a.color===d.color){ const center=r*W+c; if(board[center]?.type==='normal') board[center]=new Cell('plane'); matches.add(center); matches.add(center+1); matches.add(center+W); matches.add(center+W+1); } } return matches; }
-async function applyGravity(){ for(let c=0;c<W;c++){ const column=[]; for(let r=W-1;r>=0;r--) if(board[r*W+c]!==null) column.push(board[r*W+c].clone()); while(column.length<W){ const newCell= (level>=3&&Math.random()<0.1)?new Cell('ice',null,2):(level>=6&&Math.random()<0.07)?new Cell('wall',null,3):new Cell('normal',COLORS[Math.floor(Math.random()*COLORS.length)]); column.push(newCell); } for(let r=0;r<W;r++){ const idx=(W-1-r)*W+c; board[idx]=column[r]; const div=document.getElementById('game-board')?.children[idx]; if(div) div.classList.add('fall-animation'); } } await new Promise(r=>setTimeout(r,200)); renderBoard(); }
-async function explodeBombArea(centerIdx){ if(isBusy) return; isBusy=true; const r0=Math.floor(centerIdx/W), c0=centerIdx%W, targets=[]; for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){ const nr=r0+dr, nc=c0+dc; if(nr>=0&&nr<W&&nc>=0&&nc<W) targets.push(nr*W+nc); } for(let idx of targets){ const cell=board[idx]; if(cell&&(cell.type==='ice'||cell.type==='wall')) cell.hp=Math.max(0,cell.hp-1); else if(cell&&cell.type!=='bomb'&&cell.type!=='plane') board[idx]=null; if(idx!==centerIdx&&board[idx]&&(board[idx].type==='bomb'||board[idx].type==='plane')) explodeBombArea(idx); } board[centerIdx]=null; for(let i=0;i<board.length;i++) if(board[i]===null) board[i]=new Cell('normal',COLORS[Math.floor(Math.random()*COLORS.length)]); await applyGravity(); await processAllMatches(true); updateUI(); isBusy=false; renderBoard(); }
-async function activatePlane(idx){ if(isBusy) return; isBusy=true; const fly=document.createElement('div'); fly.className='plane-fly'; fly.innerHTML='✈️💨'; document.body.appendChild(fly); fly.style.left='0px'; fly.style.top=window.innerHeight/2+'px'; for(let i=0;i<=100;i++){ fly.style.left=(window.innerWidth*i/100)+'px'; fly.style.top=window.innerHeight/2+Math.sin(i*0.2)*15+'px'; await new Promise(r=>setTimeout(r,12)); } fly.remove(); const targets=new Set(); while(targets.size<5&&targets.size<board.length){ const r=Math.floor(Math.random()*board.length); if(board[r]&&board[r].type!=='wall') targets.add(r); } for(let t of targets){ const cell=board[t]; if(cell&&(cell.type==='ice'||cell.type==='wall')) cell.hp=Math.max(0,cell.hp-1); else board[t]=null; const div=document.getElementById('game-board')?.children[t]; if(div) div.classList.add('pop-animation'); } await new Promise(r=>setTimeout(r,150)); for(let t of targets) if(board[t]===null) board[t]=new Cell('normal',COLORS[Math.floor(Math.random()*COLORS.length)]); board[idx]=null; for(let i=0;i<board.length;i++) if(board[i]===null) board[i]=new Cell('normal',COLORS[Math.floor(Math.random()*COLORS.length)]); await applyGravity(); await processAllMatches(true); updateUI(); isBusy=false; renderBoard(); }
-function clearMatchesSilent(){ const m=findAllMatches(); if(m.size===0) return false; for(let p of m){ if(board[p]&&(board[p].type==='ice'||board[p].type==='wall')) board[p].hp--; else board[p]=null; } for(let i=0;i<board.length;i++) if(board[i]===null) board[i]=new Cell('normal',COLORS[Math.floor(Math.random()*COLORS.length)]); return true; }
+function renderNotes() {
+    const container = document.getElementById('notesList');
+    if (!container) return;
+    let filtered = notes;
+    if (currentNoteFilter !== 'all') {
+        if (currentNoteFilter.startsWith('#')) filtered = notes.filter(n => n.text.includes(currentNoteFilter));
+        else filtered = notes.filter(n => n.category === currentNoteFilter);
+    }
+    if (filtered.length === 0) { container.innerHTML = '<div class="text-center text-zinc-500 py-8">Нет заметок</div>'; return; }
+    container.innerHTML = filtered.map(n => `
+        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-3">
+            <div class="flex justify-between"><span class="text-[10px] font-bold px-2 py-0.5 rounded bg-zinc-800">${escapeHtml(n.category)}</span><span class="text-[10px] text-zinc-500">${n.date || ''}</span></div>
+            ${n.image ? `<img src="${n.image}" class="w-full h-28 object-cover rounded-lg my-2 cursor-pointer" onclick="openPhoto('${n.image}')">` : ''}
+            <div class="text-sm mt-1">${parseNoteText(n.text)}</div>
+            <div class="flex justify-end gap-3 mt-2"><button onclick="editNoteById(${n.id})" class="text-xs text-amber-500">✏️</button><button onclick="deleteNoteById(${n.id})" class="text-xs text-red-500">🗑️</button></div>
+        </div>
+    `).join('');
+}
+
+function parseNoteText(txt) {
+    let s = escapeHtml(txt).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>');
+    return s.replace(/(^|\s)#([\wа-яА-Я]+)/g, '$1<span class="font-bold cursor-pointer" style="color:var(--color-accent)" onclick="filterNotes(\'#$2\',null)">#$2</span>');
+}
+
+function escapeHtml(str) { return str.replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
+
+function saveNote() {
+    let text = document.getElementById('noteText').value.trim();
+    if (!text && !pendingImage) { showToast("Напишите что-нибудь", "⚠️"); return; }
+    let cat = (currentNoteFilter === 'all' || currentNoteFilter.startsWith('#')) ? '💡 Мысли' : currentNoteFilter;
+    if (editingNoteId) {
+        let idx = notes.findIndex(n => n.id === editingNoteId);
+        if (idx !== -1) {
+            notes[idx] = { ...notes[idx], text, category: cat, image: pendingImage || notes[idx].image };
+        }
+        editingNoteId = null;
+        document.getElementById('edit-bar').classList.add('hidden');
+    } else {
+        notes.unshift({ id: Date.now(), text, category: cat, date: new Date().toLocaleDateString('ru'), image: pendingImage });
+    }
+    localStorage.setItem('mv_notes', JSON.stringify(notes));
+    document.getElementById('noteText').value = '';
+    clearImage();
+    renderNotes();
+    showToast("Сохранено", "✅");
+}
+
+function editNoteById(id) {
+    const note = notes.find(n => n.id === id);
+    if (!note) return;
+    editingNoteId = id;
+    document.getElementById('noteText').value = note.text;
+    if (note.image) { pendingImage = note.image; document.getElementById('previewImg').src = note.image; document.getElementById('imgPreview').classList.remove('hidden'); }
+    document.getElementById('edit-bar').classList.remove('hidden');
+}
+
+function deleteNoteById(id) { if (confirm("Удалить заметку?")) { notes = notes.filter(n => n.id !== id); localStorage.setItem('mv_notes', JSON.stringify(notes)); renderNotes(); showToast("Удалено", "🗑️"); } }
+function cancelEditNote() { editingNoteId = null; document.getElementById('noteText').value = ''; clearImage(); document.getElementById('edit-bar').classList.add('hidden'); }
+function clearImage() { pendingImage = null; document.getElementById('imgPreview').classList.add('hidden'); document.getElementById('photoInput').value = ''; }
+function previewImage(file) { if (file) { const r = new FileReader(); r.onload = e => { pendingImage = e.target.result; document.getElementById('previewImg').src = pendingImage; document.getElementById('imgPreview').classList.remove('hidden'); }; r.readAsDataURL(file); } }
+document.getElementById('photoInput')?.addEventListener('change', e => previewImage(e.target.files[0]));
+function openPhoto(src) { const modal = document.getElementById('photo-modal'); document.getElementById('modal-img').src = src; modal.classList.remove('hidden'); modal.classList.add('flex'); }
+function closePhotoModal() { document.getElementById('photo-modal').classList.add('hidden'); }
+
+function filterNotes(cat, btn) {
+    currentNoteFilter = cat;
+    renderNotes();
+    document.querySelectorAll('.note-tab-btn').forEach(b => { b.classList.remove('tab-active', 'bg-accent'); b.classList.add('bg-zinc-800', 'text-zinc-300'); });
+    if (btn) { btn.classList.add('tab-active'); btn.classList.remove('bg-zinc-800'); btn.style.backgroundColor = 'var(--color-accent)'; }
+}
+
+// ----------------------------------------------------------------------
+// 2. СЕЙФ (исправлен ключ + расшифровка)
+// ----------------------------------------------------------------------
+let currentMasterKey = '';
+let vaultItems = [];
+let vaultMode = 'pass';
+
+function unlockVault() {
+    let pass = document.getElementById('masterPass').value;
+    if (!pass) { showToast("Введите пароль", "🔑"); return; }
+    let key = CryptoJS.SHA256(pass).toString();
+    let encrypted = localStorage.getItem('mv_vault_data');
+    if (!encrypted) {
+        // первый вход: создаём пустой сейф
+        let empty = CryptoJS.AES.encrypt(JSON.stringify([]), key).toString();
+        localStorage.setItem('mv_vault_data', empty);
+        currentMasterKey = key;
+        vaultItems = [];
+        showVaultContent();
+        return;
+    }
+    try {
+        let bytes = CryptoJS.AES.decrypt(encrypted, key);
+        let decrypted = bytes.toString(CryptoJS.enc.Utf8);
+        if (!decrypted) throw new Error();
+        vaultItems = JSON.parse(decrypted);
+        currentMasterKey = key;
+        showVaultContent();
+    } catch(e) {
+        showToast("Неверный пароль!", "❌");
+        currentMasterKey = '';
+    }
+}
+
+function showVaultContent() {
+    document.getElementById('cryptoLock').classList.add('hidden');
+    document.getElementById('cryptoContent').classList.remove('hidden');
+    renderVaultList();
+}
+
+function renderVaultList() {
+    let container = document.getElementById('vaultList');
+    if (!container) return;
+    if (!vaultItems.length) { container.innerHTML = '<div class="text-center text-zinc-500 py-4">Нет записей</div>'; return; }
+    container.innerHTML = vaultItems.map(item => `
+        <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-3">
+            <div class="flex justify-between"><span class="font-bold text-sm">${escapeHtml(item.title)}</span><button onclick="copyToClipboard('${item.secret.replace(/'/g, "\\'")}')" class="text-cyan-500 text-xs">📋</button></div>
+            ${item.login ? `<div class="text-xs text-zinc-400">${escapeHtml(item.login)}</div>` : ''}
+            <div class="mt-1 text-xs font-mono break-all">${item.type === 'seed' ? `<textarea readonly class="w-full bg-zinc-900 rounded p-1 text-[11px]">${item.secret}</textarea>` : `<input type="password" value="${item.secret}" readonly class="w-full bg-zinc-900 rounded p-1 text-[11px]" id="secret-${item.id}"><button onclick="toggleSecretShow('secret-${item.id}')" class="text-xs mt-1">👁️ показать</button>`}</div>
+            <button onclick="deleteVaultItem(${item.id})" class="text-red-400 text-xs mt-2">Удалить</button>
+        </div>
+    `).join('');
+}
+
+function saveVaultEntry() {
+    if (!currentMasterKey) { showToast("Сейф не открыт", "🔒"); return; }
+    let title, login = '', secret, type = vaultMode;
+    if (vaultMode === 'pass') {
+        title = document.getElementById('vaultTitle').value.trim();
+        login = document.getElementById('vaultLogin').value.trim();
+        secret = document.getElementById('vaultSecret').value.trim();
+        if (!title || !secret) { showToast("Заполните название и секрет", "⚠️"); return; }
+    } else {
+        title = document.getElementById('seedTitle').value.trim();
+        secret = document.getElementById('seedPhrase').value.trim();
+        if (!title || !secret) { showToast("Заполните название и seed", "⚠️"); return; }
+    }
+    vaultItems.push({ id: Date.now(), type: vaultMode, title, login, secret });
+    saveEncryptedVault();
+    renderVaultList();
+    document.getElementById('vaultTitle').value = '';
+    document.getElementById('vaultLogin').value = '';
+    document.getElementById('vaultSecret').value = '';
+    document.getElementById('seedTitle').value = '';
+    document.getElementById('seedPhrase').value = '';
+    showToast("Данные зашифрованы", "🛡️");
+}
+
+function deleteVaultItem(id) { vaultItems = vaultItems.filter(i => i.id !== id); saveEncryptedVault(); renderVaultList(); }
+function saveEncryptedVault() { if(currentMasterKey) { let encrypted = CryptoJS.AES.encrypt(JSON.stringify(vaultItems), currentMasterKey).toString(); localStorage.setItem('mv_vault_data', encrypted); } }
+function copyToClipboard(text) { navigator.clipboard.writeText(text); showToast("Скопировано", "📋"); }
+function toggleSecretShow(id) { let input = document.getElementById(id); if (input) input.type = input.type === 'password' ? 'text' : 'password'; }
+function toggleSecretField() { let f = document.getElementById('vaultSecret'); if (f) f.type = f.type === 'password' ? 'text' : 'password'; }
+function genPassword() { let chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*"; let p = ""; for(let i=0;i<14;i++) p+= chars[Math.floor(Math.random()*chars.length)]; document.getElementById('vaultSecret').value = p; }
+function pasteClipboard() { navigator.clipboard.readText().then(t => document.getElementById('vaultSecret').value = t).catch(()=>showToast("Нет доступа","⚠️")); }
+function setVaultMode(mode) { vaultMode = mode; document.getElementById('passForm').classList.toggle('hidden', mode !== 'pass'); document.getElementById('seedForm').classList.toggle('hidden', mode !== 'seed'); document.getElementById('modePassBtn').classList.toggle('bg-zinc-800', mode==='pass'); document.getElementById('modeSeedBtn').classList.toggle('bg-zinc-800', mode==='seed'); }
+
+// ----------------------------------------------------------------------
+// 3. ИГРА (плавная, без ряби, препятствия с уровней)
+// ----------------------------------------------------------------------
+const W = 8;
+let gameBoard = [], gameScore = 0, gameLevel = 1, selectedIdx = null, gameBusy = false;
+const COLORS_LIST = ['🔴','🟡','🟢','🔵','🟣'];
+const BOMB_EMOJI = '💣', PLANE_EMOJI = '✈️', ICE_EMOJI = '❄️', WALL_EMOJI = '🧱';
+
+class Tile { constructor(type, color=null, hp=1) { this.type = type; this.color = color; this.hp = hp; } display() { if(this.type==='bomb') return BOMB_EMOJI; if(this.type==='plane') return PLANE_EMOJI; if(this.type==='ice') return ICE_EMOJI; if(this.type==='wall') return WALL_EMOJI; return this.color; } }
+
+function initGame() {
+    gameBoard = []; gameScore = 0; gameLevel = 1; selectedIdx = null; gameBusy = false;
+    for(let i=0;i<W*W;i++) gameBoard.push(new Tile('normal', COLORS_LIST[Math.floor(Math.random()*COLORS_LIST.length)]));
+    while(clearMatchesSilent()); 
+    updateGameUI();
+    renderGame();
+}
+function updateGameUI() { document.getElementById('gameScore').innerText = gameScore; let lvl = Math.floor(gameScore/120)+1; if(lvl>gameLevel) { gameLevel=lvl; showToast(`Уровень ${gameLevel}! 🧊❄️`,'🏆'); } document.getElementById('gameLevel').innerText = gameLevel; }
+function renderGame() { let grid = document.getElementById('gameGrid'); if(!grid) return; grid.innerHTML = ''; for(let i=0;i<gameBoard.length;i++){ let tile = gameBoard[i]; let div = document.createElement('div'); div.className = 'candy'; if(selectedIdx===i) div.classList.add('selected'); if(tile.type==='ice') div.style.background='#88ccff40'; if(tile.type==='wall') div.style.background='#aa774430'; div.innerText = tile.display(); div.onclick = ()=>onTileClick(i); grid.appendChild(div); } }
+async function onTileClick(idx) { if(gameBusy) return; let tile = gameBoard[idx]; if(tile.type==='bomb') { explodeBomb(idx); return; } if(tile.type==='plane') { activatePlane(idx); return; } if(selectedIdx===null) { selectedIdx=idx; renderGame(); return; } let diff = Math.abs(selectedIdx-idx); let sameRow = Math.floor(selectedIdx/W)===Math.floor(idx/W); if((diff===1 && sameRow) || diff===W) { await trySwap(selectedIdx, idx); } selectedIdx=null; renderGame(); }
+async function trySwap(a,b) { if(gameBusy) return; gameBusy=true; [gameBoard[a], gameBoard[b]] = [gameBoard[b], gameBoard[a]]; renderGame(); await delay(70); let had = await processMatches(true); if(!had) { [gameBoard[a], gameBoard[b]] = [gameBoard[b], gameBoard[a]]; renderGame(); } gameBusy=false; }
+async function processMatches(award) { let any = false; while(true){ let matches = findAllMatches(); if(matches.size===0) break; any=true; let bombSpots=[], planeSpots=[]; for(let pos of matches){ let t=gameBoard[pos]; if(t.type==='ice'||t.type==='wall'){ t.hp--; if(t.hp<=0){ gameBoard[pos]=new Tile('normal', COLORS_LIST[Math.floor(Math.random()*COLORS_LIST.length)]); if(award) gameScore+=6; } else { if(award) gameScore+=2; } continue; } if(t.type==='normal' && award) gameScore+=10; if(t.type==='bomb') bombSpots.push(pos); if(t.type==='plane') planeSpots.push(pos); gameBoard[pos]=null; } for(let p of bombSpots) gameBoard[p]=new Tile('bomb'); for(let p of planeSpots) gameBoard[p]=new Tile('plane'); for(let i=0;i<gameBoard.length;i++) if(gameBoard[i]===null) gameBoard[i]=new Tile('normal', COLORS_LIST[Math.floor(Math.random()*COLORS_LIST.length)]); await applyGravityAndRefill(); updateGameUI(); if(findAllMatches().size>0){ await processMatches(award); return true; } } if(any) updateGameUI(); return any; }
+function findAllMatches() { let set = new Set(); for(let r=0;r<W;r++) for(let c=0;c<W-2;c++){ let idx=r*W+c, t=gameBoard[idx]; if(!t||t.type!=='normal') continue; let len=1; while(c+len<W && gameBoard[r*W+c+len]?.type==='normal' && gameBoard[r*W+c+len]?.color===t.color) len++; if(len>=3){ for(let k=0;k<len;k++) set.add(idx+k); if(len>=4){ let mid=idx+Math.floor(len/2); if(gameBoard[mid]?.type==='normal') gameBoard[mid]=new Tile('bomb'); } } c+=len-1; } for(let c=0;c<W;c++) for(let r=0;r<W-2;r++){ let idx=r*W+c, t=gameBoard[idx]; if(!t||t.type!=='normal') continue; let len=1; while(r+len<W && gameBoard[(r+len)*W+c]?.type==='normal' && gameBoard[(r+len)*W+c]?.color===t.color) len++; if(len>=3){ for(let k=0;k<len;k++) set.add(idx+k*W); if(len>=4){ let mid=idx+Math.floor(len/2)*W; if(gameBoard[mid]?.type==='normal') gameBoard[mid]=new Tile('bomb'); } } r+=len-1; } for(let r=0;r<W-1;r++) for(let c=0;c<W-1;c++){ let a=gameBoard[r*W+c], b=gameBoard[r*W+c+1], c1=gameBoard[(r+1)*W+c], d=gameBoard[(r+1)*W+c+1]; if(a?.type==='normal' && b?.type==='normal' && c1?.type==='normal' && d?.type==='normal' && a.color===b.color && a.color===c1.color && a.color===d.color){ let center=r*W+c; if(gameBoard[center]?.type==='normal') gameBoard[center]=new Tile('plane'); set.add(center); set.add(center+1); set.add(center+W); set.add(center+W+1); } } return set; }
+async function applyGravityAndRefill() { for(let c=0;c<W;c++){ let column=[]; for(let r=W-1;r>=0;r--) if(gameBoard[r*W+c]!==null) column.push(gameBoard[r*W+c].clone()); while(column.length<W){ let rnd=COLORS_LIST[Math.floor(Math.random()*COLORS_LIST.length)]; let newTile; if(gameLevel>=3 && Math.random()<0.12) newTile = new Tile('ice',null,2); else if(gameLevel>=6 && Math.random()<0.08) newTile = new Tile('wall',null,3); else newTile = new Tile('normal',rnd); column.push(newTile); } for(let r=0;r<W;r++){ let idx=(W-1-r)*W+c; gameBoard[idx]=column[r]; let div = document.getElementById('gameGrid')?.children[idx]; if(div) div.classList.add('fall-effect'); } } await delay(180); renderGame(); }
+async function explodeBomb(idx){ if(gameBusy) return; gameBusy=true; let r0=Math.floor(idx/W), c0=idx%W, targets=[]; for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){ let nr=r0+dr, nc=c0+dc; if(nr>=0 && nr<W && nc>=0 && nc<W) targets.push(nr*W+nc); } for(let pos of targets){ let tile=gameBoard[pos]; if(tile && (tile.type==='ice'||tile.type==='wall')) tile.hp=Math.max(0,tile.hp-1); else if(tile && tile.type!=='bomb' && tile.type!=='plane') gameBoard[pos]=null; if(pos!==idx && gameBoard[pos] && (gameBoard[pos].type==='bomb'||gameBoard[pos].type==='plane')) explodeBomb(pos); } gameBoard[idx]=null; for(let i=0;i<gameBoard.length;i++) if(gameBoard[i]===null) gameBoard[i]=new Tile('normal', COLORS_LIST[Math.floor(Math.random()*COLORS_LIST.length)]); await applyGravityAndRefill(); await processMatches(true); updateGameUI(); gameBusy=false; renderGame(); }
+async function activatePlane(idx){ if(gameBusy) return; gameBusy=true; let flyDiv = document.createElement('div'); flyDiv.className='plane-fly'; flyDiv.innerText='✈️💨'; document.body.appendChild(flyDiv); flyDiv.style.left='0px'; flyDiv.style.top=window.innerHeight/2+'px'; for(let i=0;i<=100;i++){ flyDiv.style.left=(window.innerWidth*i/100)+'px'; flyDiv.style.top=window.innerHeight/2+Math.sin(i*0.15)*12+'px'; await delay(10); } flyDiv.remove(); let destroyed=new Set(); while(destroyed.size<5 && destroyed.size<W*W){ let r=Math.floor(Math.random()*gameBoard.length); if(gameBoard[r] && gameBoard[r].type!=='wall') destroyed.add(r); } for(let pos of destroyed){ let tile=gameBoard[pos]; if(tile && (tile.type==='ice'||tile.type==='wall')) tile.hp=Math.max(0,tile.hp-1); else gameBoard[pos]=null; let div=document.getElementById('gameGrid')?.children[pos]; if(div) div.classList.add('pop-effect'); } await delay(150); for(let pos of destroyed) if(gameBoard[pos]===null) gameBoard[pos]=new Tile('normal', COLORS_LIST[Math.floor(Math.random()*COLORS_LIST.length)]); gameBoard[idx]=null; for(let i=0;i<gameBoard.length;i++) if(gameBoard[i]===null) gameBoard[i]=new Tile('normal', COLORS_LIST[Math.floor(Math.random()*COLORS_LIST.length)]); await applyGravityAndRefill(); await processMatches(true); updateGameUI(); gameBusy=false; renderGame(); }
+function clearMatchesSilent() { let m = findAllMatches(); if(m.size===0) return false; for(let p of m){ if(gameBoard[p] && (gameBoard[p].type==='ice'||gameBoard[p].type==='wall')) gameBoard[p].hp--; else gameBoard[p]=null; } for(let i=0;i<gameBoard.length;i++) if(gameBoard[i]===null) gameBoard[i]=new Tile('normal', COLORS_LIST[Math.floor(Math.random()*COLORS_LIST.length)]); return true; }
+Tile.prototype.clone = function() { return new Tile(this.type, this.color, this.hp); };
+function delay(ms) { return new Promise(r=>setTimeout(r,ms)); }
+
+// ----------------------------------------------------------------------
+// 4. ОБЩИЕ ФУНКЦИИ
+// ----------------------------------------------------------------------
+function switchTab(tab) {
+    document.getElementById('notes-section').classList.toggle('hidden', tab !== 'notes');
+    document.getElementById('crypto-section').classList.toggle('hidden', tab !== 'crypto');
+    document.getElementById('game-section').classList.toggle('hidden', tab !== 'game');
+    document.getElementById('settings-section').classList.toggle('hidden', tab !== 'settings');
+    let tabs = { notes: 'tabNotes', crypto: 'tabCrypto', game: 'tabGame', settings: 'tabSettings' };
+    for (let [key, id] of Object.entries(tabs)) {
+        let btn = document.getElementById(id);
+        if (key === tab) { btn.classList.add('text-accent'); btn.classList.remove('text-zinc-500'); }
+        else { btn.classList.remove('text-accent'); btn.classList.add('text-zinc-500'); }
+    }
+}
+function toggleTheme() { document.documentElement.classList.toggle('dark'); let isDark = document.documentElement.classList.contains('dark'); localStorage.setItem('theme', isDark ? 'dark' : 'light'); }
+function setAccent(color) { document.documentElement.style.setProperty('--color-accent', color); localStorage.setItem('accentColor', color); }
+function exportAll() { let data = { notes, vault: localStorage.getItem('mv_vault_data') }; let blob = new Blob([JSON.stringify(data)], {type:'application/json'}); let a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mindvault_backup.json'; a.click(); }
+function importData(input) { let f = input.files[0]; if(!f) return; let r = new FileReader(); r.onload = e => { try{ let d = JSON.parse(e.target.result); if(d.notes) { notes = d.notes; localStorage.setItem('mv_notes', JSON.stringify(notes)); renderNotes(); } if(d.vault) localStorage.setItem('mv_vault_data', d.vault); showToast("Импорт выполнен","✅"); }catch(e){ showToast("Ошибка файла","❌"); } }; r.readAsText(f); }
+document.getElementById('importFile')?.addEventListener('change', e => importData(e.target));
+function showToast(msg, icon='') { let t = document.getElementById('toast'); t.innerHTML = `${icon} ${msg}`; t.classList.remove('hidden'); setTimeout(()=> t.classList.add('hidden'), 2000); }
+
+// Инициализация
+document.addEventListener('DOMContentLoaded', () => {
+    if (localStorage.getItem('theme') === 'light') document.documentElement.classList.remove('dark'); else document.documentElement.classList.add('dark');
+    let savedAccent = localStorage.getItem('accentColor'); if (savedAccent) document.documentElement.style.setProperty('--color-accent', savedAccent);
+    renderNotes(); initGame(); switchTab('notes');
+});
 </script>
 </body>
 </html>
