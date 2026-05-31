@@ -2,8 +2,9 @@
 <html lang="ru" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>MindVault Pro — Матрица и Pomodoro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>MindVault Pro — PWA + сейф с редактированием</title>
+    <link rel="manifest" href="data:application/manifest+json,{}" id="manifestPlaceholder">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -12,14 +13,12 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: #09090b; color: #fafafa; transition: background 0.2s; position: relative; min-height: 100vh; }
         html.light body { background: #f4f4f5; color: #18181b; }
-        /* Canvas для матрицы */
-        #matrixCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; opacity: 0.15; transition: opacity 0.3s; }
-        body.matrix-active #matrixCanvas { opacity: 0.25; pointer-events: none; }
+        #matrixCanvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; opacity: 0; transition: opacity 0.3s; }
+        body.matrix-active #matrixCanvas { opacity: 0.2; pointer-events: none; }
         body.matrix-active main, body.matrix-active nav { background-color: transparent !important; backdrop-filter: blur(2px); }
-        /* остальные стили */
-        .nav-btn { min-height: 44px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
-        .tab-active { background-color: var(--color-accent) !important; color: white !important; }
-        .note-tab-btn { transition: all 0.2s; white-space: nowrap; }
+        .nav-btn { min-height: 48px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-weight: 600; }
+        .tab-active { color: var(--color-accent) !important; }
+        .note-tab-btn { transition: all 0.2s; white-space: nowrap; padding: 6px 12px; border-radius: 20px; }
         .game-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; aspect-ratio: 1 / 1; background: rgba(0,0,0,0.3); border-radius: 20px; padding: 8px; }
         .candy { display: flex; align-items: center; justify-content: center; font-size: 1.5rem; border-radius: 12px; background: rgba(255,255,255,0.08); cursor: pointer; backdrop-filter: blur(2px); }
         html.light .candy { background: rgba(0,0,0,0.05); }
@@ -29,7 +28,7 @@
         .fall-effect { animation: fall 0.2s ease-out; }
         @keyframes fall { from { transform: translateY(-35px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .plane-fly { position: fixed; font-size: 2rem; pointer-events: none; z-index: 200; filter: drop-shadow(0 4px 6px black); }
-        .toast { animation: fadeIn 0.2s ease; }
+        .toast { animation: fadeIn 0.2s ease; background: #1e1e2f; color: white; padding: 8px 16px; border-radius: 40px; font-size: 13px; }
         @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -38,86 +37,163 @@
         .highlight { background-color: #fde047; color: #18181b; border-radius: 4px; padding: 0 2px; }
         .pin-icon { transition: transform 0.2s; }
         .pin-icon.pinned { transform: rotate(-45deg); color: var(--color-accent); }
-        /* Pomodoro */
-        .pomodoro-circle { transition: stroke-dashoffset 0.1s linear; }
+        /* Password strength */
+        .strength-bar { height: 4px; border-radius: 4px; transition: width 0.2s, background 0.2s; }
+        /* modal */
+        .modal-bg { background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); }
+        /* увеличенные отступы */
+        .main-container { padding: 20px 16px 80px 16px; }
+        .btn-large { padding: 12px 16px; border-radius: 28px; font-weight: 600; }
+        .card { border-radius: 28px; padding: 20px; }
     </style>
 </head>
 <body>
     <canvas id="matrixCanvas"></canvas>
-    <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 bg-zinc-800 text-white px-4 py-2 rounded-xl z-50 hidden text-sm"></div>
+    <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 hidden"></div>
     <div id="photo-modal" class="fixed inset-0 bg-black/90 hidden items-center justify-center z-50" onclick="closePhotoModal()">
         <img id="modal-img" class="max-w-[90%] max-h-[90%] rounded-2xl">
-        <button class="absolute top-5 right-5 text-2xl">✕</button>
+        <button class="absolute top-5 right-5 text-3xl text-white">✕</button>
     </div>
 
-    <main class="max-w-md mx-auto px-4 pt-5 pb-20 flex flex-col gap-5 relative z-10">
-        <header class="flex justify-between items-center">
-            <div><h1 class="text-2xl font-bold">MindVault <span style="color:var(--color-accent)">Pro</span></h1><p class="text-[11px] text-zinc-500">С матрицей и Pomodoro</p></div>
-            <span id="sw-status" class="text-[10px] bg-zinc-800 px-2 py-1 rounded">офлайн</span>
+    <main class="max-w-lg mx-auto main-container relative z-10" id="app">
+        <!-- Заголовок -->
+        <header class="flex justify-between items-center mb-6">
+            <div><h1 class="text-3xl font-bold">MindVault <span style="color:var(--color-accent)">Pro</span></h1><p class="text-xs text-zinc-500">Офлайн PWA | Сейф AES-256</p></div>
+            <span id="sw-status" class="text-[10px] bg-zinc-800 px-2 py-1 rounded">загрузка</span>
         </header>
 
-        <!-- ЗАМЕТКИ -->
-        <section id="notes-section">
-            <div id="edit-bar" class="hidden bg-amber-500/20 p-3 rounded-xl justify-between mb-3"><span>✏️ Редактирование</span><button onclick="cancelEditNote()">Отмена</button></div>
-            <div class="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                <button onclick="filterNotes('all',this)" class="note-tab-btn tab-active px-3 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap">Все</button>
-                <button onclick="filterNotes('💡 Мысли',this)" class="note-tab-btn px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-300 whitespace-nowrap">💡 Мысли</button>
-                <button onclick="filterNotes('📅 Задачи',this)" class="note-tab-btn px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-300 whitespace-nowrap">📅 Задачи</button>
-                <button onclick="filterNotes('💼 Работа',this)" class="note-tab-btn px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-300 whitespace-nowrap">💼 Работа</button>
+        <!-- ===================== ЗАМЕТКИ (основной экран) ===================== -->
+        <div id="notesPanel">
+            <div id="edit-bar" class="hidden bg-amber-500/20 p-3 rounded-xl justify-between mb-4"><span>✏️ Редактирование</span><button onclick="cancelEditNote()">Отмена</button></div>
+            
+            <!-- фильтры и поиск -->
+            <div class="flex gap-2 overflow-x-auto pb-3 no-scrollbar mb-2">
+                <button onclick="filterNotes('all',this)" class="note-tab-btn tab-active bg-zinc-800">Все</button>
+                <button onclick="filterNotes('💡 Мысли',this)" class="note-tab-btn bg-zinc-800">💡 Мысли</button>
+                <button onclick="filterNotes('📅 Задачи',this)" class="note-tab-btn bg-zinc-800">📅 Задачи</button>
+                <button onclick="filterNotes('💼 Работа',this)" class="note-tab-btn bg-zinc-800">💼 Работа</button>
             </div>
-            <div class="relative mb-2"><input type="text" id="searchInput" placeholder="🔍 Поиск по заметкам и #тегам" class="w-full bg-zinc-900 border border-zinc-800 rounded-xl py-2 pl-9 pr-3 text-sm"></div>
-            <div class="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4">
-                <div class="relative"><textarea id="noteText" class="w-full bg-zinc-950 rounded-xl p-3 text-sm border border-zinc-800 h-24 resize-none pr-12" placeholder="Текст заметки, #тег, **жирный**..."></textarea><button id="micButton" class="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-zinc-700 hover:bg-zinc-600 flex items-center justify-center text-white">🎙️</button></div>
-                <div id="imgPreview" class="hidden mt-2 w-16 h-16 relative"><img id="previewImg" class="rounded-lg object-cover w-full h-full"><button onclick="clearImage()" class="absolute -top-1 -right-1 bg-black rounded-full w-5 h-5 text-xs">✕</button></div>
-                <div class="flex justify-between mt-3"><label class="bg-zinc-800 px-3 py-2 rounded-xl text-xs cursor-pointer">📷 Фото<input type="file" id="photoInput" accept="image/*" class="hidden"></label><button onclick="saveNote()" class="px-4 py-2 rounded-xl text-white text-xs font-bold" style="background:var(--color-accent)">Сохранить</button></div>
+            <div class="relative mb-4"><input type="text" id="searchInput" placeholder="🔍 Поиск по заметкам и #тегам" class="w-full bg-zinc-900 border border-zinc-700 rounded-2xl py-3 pl-10 pr-4 text-base"></div>
+            
+            <!-- форма добавления заметки -->
+            <div class="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-5 mb-5">
+                <div class="relative"><textarea id="noteText" class="w-full bg-zinc-950 rounded-xl p-3 text-base border border-zinc-700 h-28 resize-none pr-12" placeholder="Текст заметки, #тег, **жирный**... или надиктуйте голосом"></textarea><button id="micButton" class="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-zinc-700 hover:bg-zinc-600 text-white">🎙️</button></div>
+                <div id="imgPreview" class="hidden mt-3 w-16 h-16 relative"><img id="previewImg" class="rounded-lg object-cover w-full h-full"><button onclick="clearImage()" class="absolute -top-1 -right-1 bg-black rounded-full w-5 h-5 text-xs">✕</button></div>
+                <div class="flex justify-between mt-4"><label class="bg-zinc-800 px-4 py-2 rounded-xl text-sm cursor-pointer">📷 Прикрепить фото<input type="file" id="photoInput" accept="image/*" class="hidden"></label><button onclick="saveNote()" class="px-5 py-2 rounded-xl text-white text-sm font-bold" style="background:var(--color-accent)">Сохранить</button></div>
             </div>
-            <div id="notesList" class="flex flex-col gap-3 max-h-96 overflow-auto mt-2"></div>
-        </section>
+            
+            <!-- список заметок -->
+            <div id="notesList" class="flex flex-col gap-4 max-h-[50vh] overflow-auto"></div>
+        </div>
 
-        <!-- СЕЙФ (сокращён, но рабочий) -->
-        <section id="crypto-section" class="hidden">
-            <div id="cryptoLock" class="bg-zinc-900 rounded-2xl p-6 text-center"><div class="w-12 h-12 mx-auto bg-cyan-500/20 rounded-full flex items-center justify-center text-cyan-500 mb-3">🔐</div><h3 class="font-bold">Секретный сейф</h3><p class="text-xs text-zinc-500 mb-4">AES-256</p><input type="password" id="masterPass" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-center mb-3" placeholder="Мастер-пароль"><button onclick="unlockVault()" class="w-full bg-cyan-600 py-2 rounded-xl text-sm font-bold">Открыть</button></div>
-            <div id="cryptoContent" class="hidden flex flex-col gap-4"><div class="bg-zinc-900 rounded-2xl p-4"><div class="flex gap-2 text-xs mb-3"><button onclick="setVaultMode('pass')" id="modePassBtn" class="flex-1 py-1 rounded-lg bg-zinc-800">Пароль</button><button onclick="setVaultMode('seed')" id="modeSeedBtn" class="flex-1 py-1 rounded-lg">Seed</button></div><div id="passForm"><input type="text" id="vaultTitle" class="w-full bg-zinc-950 rounded-xl p-2 text-sm mb-2" placeholder="Ресурс"><input type="text" id="vaultLogin" class="w-full bg-zinc-950 rounded-xl p-2 text-sm mb-2" placeholder="Логин"><div class="flex gap-2"><input type="password" id="vaultSecret" class="flex-1 bg-zinc-950 rounded-xl p-2 text-sm" placeholder="Пароль"><button onclick="toggleSecretField()" class="px-3 bg-zinc-800 rounded-xl">👁</button><button onclick="genPassword()" class="px-3 bg-zinc-800 rounded-xl">⚡</button><button onclick="pasteClipboard()" class="px-3 bg-zinc-800 rounded-xl">📋</button></div></div><div id="seedForm" class="hidden"><input type="text" id="seedTitle" class="w-full bg-zinc-950 rounded-xl p-2 text-sm mb-2" placeholder="Название кошелька"><textarea id="seedPhrase" class="w-full bg-zinc-950 rounded-xl p-2 text-sm h-20 font-mono" placeholder="12/24 слова"></textarea></div><button onclick="saveVaultEntry()" class="w-full mt-3 bg-cyan-600 py-2 rounded-xl text-sm font-bold">Добавить</button></div><div id="vaultList" class="flex flex-col gap-2 max-h-80 overflow-auto"></div></div>
-        </section>
-
-        <!-- ИГРА -->
-        <section id="game-section" class="hidden"><div class="flex justify-between font-bold"><span>Уровень <span id="gameLevel">1</span></span><span>Счёт <span id="gameScore">0</span></span></div><div class="game-grid" id="gameGrid"></div><p class="text-[11px] text-center text-zinc-500 mt-2">🔴🟡🟢 4 в ряд → 💣 | Квадрат 2x2 → ✈️ | ❄️🧱</p></section>
-
-        <!-- НАСТРОЙКИ с новыми фичами -->
-        <section id="settings-section" class="hidden">
-            <div class="bg-zinc-900 rounded-2xl p-4 flex flex-col gap-4">
-                <div class="flex justify-between items-center"><span>🌙 Тема</span><button onclick="toggleTheme()" class="px-4 py-1 bg-zinc-800 rounded-xl text-sm">Тёмная</button></div>
-                <div><span>🎨 Акцент</span><div class="flex gap-3 mt-2"><div onclick="setAccent('#f43f5e')" class="w-8 h-8 rounded-full bg-rose-500"></div><div onclick="setAccent('#3b82f6')" class="w-8 h-8 rounded-full bg-blue-500"></div><div onclick="setAccent('#10b981')" class="w-8 h-8 rounded-full bg-emerald-500"></div><div onclick="setAccent('#a855f7')" class="w-8 h-8 rounded-full bg-purple-500"></div></div></div>
-                
-                <!-- MATRIX анимация -->
-                <div class="flex justify-between items-center border-t border-zinc-800 pt-3"><span>💚 Матрица (фон)</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="matrixToggle" class="sr-only peer"><div class="w-11 h-6 bg-zinc-700 rounded-full peer peer-checked:bg-accent peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div></label></div>
-
-                <!-- Pomodoro таймер -->
-                <div class="border-t border-zinc-800 pt-3">
-                    <div class="flex justify-between items-center"><span>🍅 Pomodoro (25 мин)</span><button id="pomodoroBtn" class="px-3 py-1 bg-accent rounded-lg text-xs font-bold">Старт</button></div>
-                    <div class="text-center mt-2"><span id="timerDisplay" class="text-2xl font-mono tracking-wider">25:00</span></div>
-                    <div class="text-[10px] text-zinc-500 text-center mt-1">Концентрация без отвлечений</div>
+        <!-- ===================== СЕЙФ ===================== -->
+        <div id="cryptoPanel" class="hidden">
+            <div id="cryptoLock" class="bg-zinc-900 rounded-2xl p-6 text-center">
+                <div class="w-14 h-14 mx-auto bg-cyan-500/20 rounded-full flex items-center justify-center text-cyan-500 mb-3 text-2xl">🔐</div>
+                <h3 class="text-xl font-bold">Секретный сейф</h3>
+                <p class="text-xs text-zinc-500 mb-4">AES-256, локальное шифрование</p>
+                <input type="password" id="masterPass" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-center mb-2" placeholder="Мастер-пароль">
+                <div class="w-full h-1 bg-zinc-700 rounded-full overflow-hidden mb-3"><div id="masterStrength" class="strength-bar w-0 bg-red-500"></div></div>
+                <button onclick="unlockVault()" class="w-full bg-cyan-600 py-3 rounded-xl text-base font-bold">Открыть сейф</button>
+            </div>
+            <div id="cryptoContent" class="hidden flex flex-col gap-5">
+                <div class="bg-zinc-900 rounded-2xl p-5">
+                    <div class="flex gap-2 text-sm bg-zinc-950 p-1 rounded-xl mb-4"><button onclick="setVaultMode('pass')" id="modePassBtn" class="flex-1 py-2 rounded-lg bg-zinc-800 font-semibold">Пароль</button><button onclick="setVaultMode('seed')" id="modeSeedBtn" class="flex-1 py-2 rounded-lg font-semibold">Seed</button></div>
+                    <div id="passForm">
+                        <input type="text" id="vaultTitle" class="w-full bg-zinc-950 rounded-xl p-3 text-base mb-2" placeholder="Ресурс / Название">
+                        <input type="text" id="vaultLogin" class="w-full bg-zinc-950 rounded-xl p-3 text-base mb-2" placeholder="Логин (опционально)">
+                        <div class="flex gap-2 mb-2"><input type="password" id="vaultSecret" class="flex-1 bg-zinc-950 rounded-xl p-3 text-base" placeholder="Пароль / секрет"><button onclick="toggleSecretField()" class="px-3 bg-zinc-800 rounded-xl">👁</button><button onclick="genPassword()" class="px-3 bg-zinc-800 rounded-xl">⚡</button><button onclick="pasteClipboard()" class="px-3 bg-zinc-800 rounded-xl">📋</button></div>
+                        <div class="w-full h-1 bg-zinc-700 rounded-full overflow-hidden"><div id="secretStrength" class="strength-bar w-0 bg-red-500"></div></div>
+                    </div>
+                    <div id="seedForm" class="hidden">
+                        <input type="text" id="seedTitle" class="w-full bg-zinc-950 rounded-xl p-3 text-base mb-2" placeholder="Название кошелька">
+                        <textarea id="seedPhrase" class="w-full bg-zinc-950 rounded-xl p-3 text-base h-24 font-mono" placeholder="12/24 слова"></textarea>
+                    </div>
+                    <button onclick="saveVaultEntry()" class="w-full mt-4 bg-cyan-600 py-3 rounded-xl text-base font-bold">Добавить и зашифровать</button>
                 </div>
-
-                <div class="flex gap-2"><button onclick="exportAll()" class="flex-1 py-2 bg-zinc-800 rounded-xl text-sm">📦 Экспорт</button><label class="flex-1 py-2 bg-zinc-800 rounded-xl text-sm text-center cursor-pointer">📥 Импорт<input type="file" id="importFile" class="hidden" accept=".json"></label></div>
-                
-                <!-- Ссылка на Telegram -->
-                <a href="https://t.me/TokenTimesChat" target="_blank" class="flex items-center gap-3 bg-zinc-800 p-3 rounded-2xl hover:bg-zinc-700 transition"><div class="w-8 h-8 bg-[#0088cc]/20 rounded-full flex items-center justify-center text-xl">📢</div><div><p class="text-sm font-semibold">Telegram канал</p><p class="text-[10px] text-zinc-400">@TokenTimesChat</p></div></a>
+                <div id="vaultList" class="flex flex-col gap-3 max-h-[45vh] overflow-auto"></div>
             </div>
-        </section>
+        </div>
+
+        <!-- ===================== БУРГЕР-МЕНЮ (второстепенное) ===================== -->
+        <div id="menuPanel" class="hidden flex flex-col gap-5">
+            <!-- Игра -->
+            <div class="bg-zinc-900 rounded-2xl p-5">
+                <h2 class="text-xl font-bold mb-3">🎮 Игра 3-в-ряд</h2>
+                <div class="flex justify-between font-bold mb-2"><span>Уровень <span id="gameLevel">1</span></span><span>Счёт <span id="gameScore">0</span></span></div>
+                <div class="game-grid" id="gameGrid"></div>
+                <p class="text-[11px] text-center text-zinc-400 mt-3">🔴🟡🟢 4 в ряд → 💣 | Квадрат 2x2 → ✈️ | ❄️🧱</p>
+            </div>
+
+            <!-- Настройки -->
+            <div class="bg-zinc-900 rounded-2xl p-5 flex flex-col gap-4">
+                <h2 class="text-xl font-bold">⚙️ Настройки</h2>
+                <div class="flex justify-between items-center"><span>🌙 Тема</span><button onclick="toggleTheme()" class="px-4 py-2 bg-zinc-800 rounded-xl text-sm">Сменить</button></div>
+                <div><span>🎨 Акцент</span><div class="flex gap-3 mt-2"><div onclick="setAccent('#f43f5e')" class="w-8 h-8 rounded-full bg-rose-500 cursor-pointer"></div><div onclick="setAccent('#3b82f6')" class="w-8 h-8 rounded-full bg-blue-500 cursor-pointer"></div><div onclick="setAccent('#10b981')" class="w-8 h-8 rounded-full bg-emerald-500 cursor-pointer"></div><div onclick="setAccent('#a855f7')" class="w-8 h-8 rounded-full bg-purple-500 cursor-pointer"></div></div></div>
+                <div class="flex justify-between items-center"><span>💚 Матрица (фон)</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="matrixToggle" class="sr-only peer"><div class="w-11 h-6 bg-zinc-700 rounded-full peer-checked:bg-accent after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div></label></div>
+                <div><div class="flex justify-between items-center"><span>🍅 Pomodoro (25 мин)</span><button id="pomodoroBtn" class="px-3 py-1 bg-accent rounded-lg text-sm font-bold">Старт</button></div><div class="text-center mt-2"><span id="timerDisplay" class="text-2xl font-mono">25:00</span></div></div>
+                <div class="flex gap-2"><button onclick="exportAll()" class="flex-1 py-2 bg-zinc-800 rounded-xl text-sm">📦 Экспорт</button><label class="flex-1 py-2 bg-zinc-800 rounded-xl text-sm text-center cursor-pointer">📥 Импорт<input type="file" id="importFile" class="hidden" accept=".json"></label></div>
+                <button id="installPwaBtn" class="bg-accent py-2 rounded-xl text-sm font-semibold hidden">📲 Установить приложение</button>
+                <a href="https://t.me/TokenTimesChat" target="_blank" class="flex items-center gap-3 bg-zinc-800 p-3 rounded-2xl"><div class="w-8 h-8 bg-[#0088cc]/20 rounded-full flex items-center justify-center text-xl">📢</div><div><p class="text-sm font-semibold">Telegram канал</p><p class="text-[10px] text-zinc-400">@TokenTimesChat</p></div></a>
+            </div>
+        </div>
     </main>
 
-    <nav class="fixed bottom-0 left-0 right-0 bg-zinc-900/90 backdrop-blur-lg border-t border-zinc-800 py-2 pb-safe z-20">
-        <div class="max-w-md mx-auto flex justify-around">
-            <button onclick="switchTab('notes')" id="tabNotes" class="nav-btn text-accent"><span class="text-xl">📝</span><span class="text-[10px]">Заметки</span></button>
-            <button onclick="switchTab('crypto')" id="tabCrypto" class="nav-btn text-zinc-500"><span class="text-xl">🔐</span><span class="text-[10px]">Сейф</span></button>
-            <button onclick="switchTab('game')" id="tabGame" class="nav-btn text-zinc-500"><span class="text-xl">🎮</span><span class="text-[10px]">Игра</span></button>
-            <button onclick="switchTab('settings')" id="tabSettings" class="nav-btn text-zinc-500"><span class="text-xl">⚙️</span><span class="text-[10px]">Настройки</span></button>
+    <nav class="fixed bottom-0 left-0 right-0 bg-zinc-900/90 backdrop-blur-lg border-t border-zinc-800 py-2 z-20">
+        <div class="max-w-lg mx-auto flex justify-around">
+            <button onclick="switchPanel('notes')" id="tabNotes" class="nav-btn text-accent text-base flex flex-col"><span class="text-2xl">📝</span><span class="text-[11px]">Заметки</span></button>
+            <button onclick="switchPanel('crypto')" id="tabCrypto" class="nav-btn text-zinc-500 text-base"><span class="text-2xl">🔐</span><span class="text-[11px]">Сейф</span></button>
+            <button onclick="switchPanel('menu')" id="tabMenu" class="nav-btn text-zinc-500 text-base"><span class="text-2xl">☰</span><span class="text-[11px]">Меню</span></button>
         </div>
     </nav>
 
 <script>
-// ======================== 1. ЗАМЕТКИ (поиск, закрепление, озвучивание) – без напоминаний ========================
+// --------------------------------------------------------------
+// 1. PWA (Service Worker + Manifest)
+// --------------------------------------------------------------
+function generateManifest() {
+    return {
+        name: "MindVault Pro",
+        short_name: "MindVault",
+        description: "Заметки, сейф с шифрованием, игры, PWA",
+        start_url: ".",
+        display: "standalone",
+        theme_color: "#09090b",
+        background_color: "#09090b",
+        icons: [
+            { src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f43f5e'/%3E%3Ctext x='50' y='68' font-size='50' text-anchor='middle' fill='white' font-family='monospace'%3EMV%3C/text%3E%3C/svg%3E", sizes: "any", type: "image/svg+xml" }
+        ]
+    };
+}
+const manifestStr = JSON.stringify(generateManifest());
+const manifestBlob = new Blob([manifestStr], {type: 'application/manifest+json'});
+const manifestURL = URL.createObjectURL(manifestBlob);
+document.querySelector('#manifestPlaceholder').setAttribute('href', manifestURL);
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(e=>console.warn);
+    // Создаём sw.js динамически (так как всё в одном файле)
+    const swCode = `self.addEventListener('install', e=>e.waitUntil(self.skipWaiting()));
+self.addEventListener('activate', e=>e.waitUntil(self.clients.claim()));
+self.addEventListener('fetch', e=>e.respondWith(fetch(e.request).catch(()=>caches.match(e.request))));`;
+    const swBlob = new Blob([swCode], {type: 'application/javascript'});
+    const swURL = URL.createObjectURL(swBlob);
+    navigator.serviceWorker.register(swURL).then(()=>{
+        document.getElementById('sw-status').innerText = 'офлайн готов';
+    }).catch(()=>{ document.getElementById('sw-status').innerText = 'офлайн недоступен'; });
+}
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault(); deferredPrompt = e;
+    document.getElementById('installPwaBtn').classList.remove('hidden');
+});
+document.getElementById('installPwaBtn')?.addEventListener('click', () => {
+    if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt.userChoice.then(()=>{ deferredPrompt=null; }); }
+});
+
+// --------------------------------------------------------------
+// 2. ЗАМЕТКИ (поиск, закрепление, озвучка, голосовой ввод)
+// --------------------------------------------------------------
 let notes = JSON.parse(localStorage.getItem('mv_notes') || '[]');
 let currentNoteFilter = 'all';
 let editingNoteId = null;
@@ -155,7 +231,7 @@ function renderNotes(){
     filtered.sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||b.id-a.id);
     if(filtered.length===0){ container.innerHTML='<div class="text-center text-zinc-500 py-8">Нет заметок</div>'; return; }
     container.innerHTML=filtered.map(n=>{ let displayed=n.text; if(searchQuery.trim()) displayed=highlightText(escapeHtml(n.text),searchQuery.trim()); else displayed=parseNoteText(n.text); return `
-        <div class="bg-zinc-900 border border-zinc-800 rounded-xl p-3"><div class="flex justify-between items-start"><div><span class="text-[10px] font-bold px-2 py-0.5 rounded bg-zinc-800">${escapeHtml(n.category)}</span><span class="text-[10px] text-zinc-500 ml-2">${n.date||''}</span></div><div class="flex gap-2"><button onclick="togglePin(${n.id})" class="pin-icon ${n.pinned?'pinned':''} text-base">📌</button><button onclick="speakText('${escapeHtml(n.text).replace(/'/g,"\\'")}')" class="text-base">🔊</button><button onclick="editNoteById(${n.id})" class="text-amber-500">✏️</button><button onclick="deleteNoteById(${n.id})" class="text-red-500">🗑️</button></div></div>${n.image?`<img src="${n.image}" class="w-full h-28 object-cover rounded-lg my-2 cursor-pointer" onclick="openPhoto('${n.image}')">`:''}<div class="text-sm mt-1">${displayed}</div></div>
+        <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4"><div class="flex justify-between items-start"><div><span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-zinc-800">${escapeHtml(n.category)}</span><span class="text-[11px] text-zinc-500 ml-2">${n.date||''}</span></div><div class="flex gap-3"><button onclick="togglePin(${n.id})" class="pin-icon ${n.pinned?'pinned':''} text-lg">📌</button><button onclick="speakText('${escapeHtml(n.text).replace(/'/g,"\\'")}')" class="text-lg">🔊</button><button onclick="editNoteById(${n.id})" class="text-amber-500 text-lg">✏️</button><button onclick="deleteNoteById(${n.id})" class="text-red-500 text-lg">🗑️</button></div></div>${n.image?`<img src="${n.image}" class="w-full h-32 object-cover rounded-xl my-2 cursor-pointer" onclick="openPhoto('${n.image}')">`:''}<div class="text-base mt-1">${displayed}</div></div>
     `}).join('');
 }
 function editNoteById(id){ let n=notes.find(n=>n.id===id); if(!n) return; editingNoteId=id; document.getElementById('noteText').value=n.text; if(n.image){ pendingImage=n.image; document.getElementById('previewImg').src=n.image; document.getElementById('imgPreview').classList.remove('hidden'); } document.getElementById('edit-bar').classList.remove('hidden'); }
@@ -165,7 +241,7 @@ function previewImage(file){ if(file){ let r=new FileReader(); r.onload=e=>{ pen
 document.getElementById('photoInput')?.addEventListener('change',e=>previewImage(e.target.files[0]));
 function openPhoto(src){ let modal=document.getElementById('photo-modal'); document.getElementById('modal-img').src=src; modal.classList.remove('hidden'); modal.classList.add('flex'); }
 function closePhotoModal(){ document.getElementById('photo-modal').classList.add('hidden'); }
-function filterNotes(cat,btn){ currentNoteFilter=cat; renderNotes(); document.querySelectorAll('.note-tab-btn').forEach(b=>{ b.classList.remove('tab-active'); b.classList.add('bg-zinc-800','text-zinc-300'); }); if(btn){ btn.classList.add('tab-active'); btn.classList.remove('bg-zinc-800'); } }
+function filterNotes(cat,btn){ currentNoteFilter=cat; renderNotes(); document.querySelectorAll('.note-tab-btn').forEach(b=>{ b.classList.remove('tab-active'); b.classList.add('bg-zinc-800'); }); if(btn){ btn.classList.add('tab-active'); btn.classList.remove('bg-zinc-800'); } }
 document.getElementById('searchInput')?.addEventListener('input',(e)=>{ searchQuery=e.target.value; renderNotes(); });
 function parseNoteText(txt){ let s=escapeHtml(txt).replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\*(.*?)\*/g,'<em>$1</em>'); return s.replace(/(^|\s)#([\wа-яА-Я]+)/g,'$1<span class="font-bold cursor-pointer" style="color:var(--color-accent)" onclick="filterNotes(\'#$2\',null)">#$2</span>'); }
 function escapeHtml(str){ return str.replace(/[&<>]/g,function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
@@ -176,22 +252,67 @@ function initSpeechRecognition(){ if(!('webkitSpeechRecognition' in window)&&!('
 function startVoiceInput(){ if(!recognition){ recognition=initSpeechRecognition(); if(!recognition){ showToast("Голосовой ввод не поддерживается","❌"); return; } recognition.onstart=()=>{ isRecording=true; let btn=document.getElementById('micButton'); btn.classList.add('mic-recording'); btn.innerText='⏺️'; showToast("Говорите...","🎤"); }; recognition.onerror=(e)=>{ isRecording=false; let btn=document.getElementById('micButton'); btn.classList.remove('mic-recording'); btn.innerText='🎙️'; showToast("Ошибка: "+e.error,"⚠️"); }; recognition.onend=()=>{ isRecording=false; let btn=document.getElementById('micButton'); btn.classList.remove('mic-recording'); btn.innerText='🎙️'; }; recognition.onresult=(event)=>{ let transcript=event.results[0][0].transcript; let ta=document.getElementById('noteText'); ta.value=ta.value.trim()?ta.value+' '+transcript:transcript; showToast("Распознано","✅"); }; } if(isRecording) recognition.stop(); else recognition.start(); }
 document.getElementById('micButton')?.addEventListener('click',startVoiceInput);
 
-// ======================== 2. СЕЙФ (минимально, но работоспособно) ========================
+// --------------------------------------------------------------
+// 3. СЕЙФ (с индикатором сложности, редактированием, копированием полей)
+// --------------------------------------------------------------
 let currentMasterKey='', vaultItems=[], vaultMode='pass';
+function getPasswordStrength(pwd){
+    if(!pwd) return 0;
+    let score=0;
+    if(pwd.length>=6) score++;
+    if(pwd.length>=10) score++;
+    if(/[A-Z]/.test(pwd) && /[a-z]/.test(pwd)) score++;
+    if(/[0-9]/.test(pwd)) score++;
+    if(/[^A-Za-z0-9]/.test(pwd)) score++;
+    return Math.min(5,score);
+}
+function updateStrengthMeter(elementId, password){
+    let strength=getStrengthColor(password);
+    let bar=document.getElementById(elementId);
+    if(bar){
+        bar.style.width=strength.percent+'%';
+        bar.style.backgroundColor=strength.color;
+    }
+}
+function getStrengthColor(pwd){
+    let s=getPasswordStrength(pwd);
+    if(s===0) return {percent:0,color:'#ef4444'};
+    if(s<=2) return {percent:30,color:'#ef4444'};
+    if(s<=3) return {percent:60,color:'#eab308'};
+    return {percent:100,color:'#22c55e'};
+}
+// При вводе мастер-пароля
+document.getElementById('masterPass')?.addEventListener('input',(e)=>updateStrengthMeter('masterStrength',e.target.value));
+document.getElementById('vaultSecret')?.addEventListener('input',(e)=>updateStrengthMeter('secretStrength',e.target.value));
+
 function unlockVault(){ let pass=document.getElementById('masterPass').value; if(!pass) return; let key=CryptoJS.SHA256(pass).toString(); let enc=localStorage.getItem('mv_vault_data'); if(!enc){ localStorage.setItem('mv_vault_data',CryptoJS.AES.encrypt("[]",key).toString()); currentMasterKey=key; vaultItems=[]; showVaultContent(); return; } try{ let bytes=CryptoJS.AES.decrypt(enc,key); let dec=bytes.toString(CryptoJS.enc.Utf8); if(!dec) throw new Error(); vaultItems=JSON.parse(dec); currentMasterKey=key; showVaultContent(); }catch(e){ showToast("Неверный пароль","❌"); } }
 function showVaultContent(){ document.getElementById('cryptoLock').classList.add('hidden'); document.getElementById('cryptoContent').classList.remove('hidden'); renderVaultList(); }
-function renderVaultList(){ let container=document.getElementById('vaultList'); if(!container) return; if(!vaultItems.length){ container.innerHTML='<div class="text-center py-4">Нет записей</div>'; return; } container.innerHTML=vaultItems.map(item=>`<div class="bg-zinc-950 p-3 rounded-xl"><div class="flex justify-between"><b>${escapeHtml(item.title)}</b><button onclick="copyToClipboard('${item.secret.replace(/'/g,"\\'")}')" class="text-cyan-500">📋</button></div>${item.login?`<div class="text-xs">${escapeHtml(item.login)}</div>`:''}<div class="mt-1 text-xs">${item.type==='seed'?`<textarea readonly class="w-full bg-zinc-900 rounded p-1">${item.secret}</textarea>`:`<input type="password" value="${item.secret}" readonly id="secret-${item.id}"><button onclick="toggleSecretShow('secret-${item.id}')">👁️</button>`}</div><button onclick="deleteVaultItem(${item.id})" class="text-red-400 text-xs">Удалить</button></div>`).join(''); }
+function renderVaultList(){
+    let container=document.getElementById('vaultList'); if(!container) return;
+    if(!vaultItems.length){ container.innerHTML='<div class="text-center py-8 text-zinc-500">Нет записей</div>'; return; }
+    container.innerHTML=vaultItems.map(item=>`
+        <div class="bg-zinc-950 border border-zinc-800 rounded-2xl p-4">
+            <div class="flex justify-between items-center"><div class="font-bold text-lg">${escapeHtml(item.title)}</div><div class="flex gap-2"><button onclick="copyToClipboard('${escapeHtml(item.title)}')" class="text-cyan-500 text-sm">📋 копировать</button><button onclick="editVaultEntry(${item.id})" class="text-amber-500 text-sm">✏️</button><button onclick="deleteVaultItem(${item.id})" class="text-red-500 text-sm">🗑️</button></div></div>
+            ${item.login?`<div class="flex justify-between items-center mt-2"><span class="text-zinc-400">Логин:</span><span>${escapeHtml(item.login)}</span><button onclick="copyToClipboard('${escapeHtml(item.login)}')" class="text-cyan-500 text-xs">📋</button></div>`:''}
+            <div class="flex justify-between items-center mt-2"><span class="text-zinc-400">${item.type==='seed'?'Seed-фраза':'Пароль'}:</span><span class="font-mono break-all">${item.type==='seed'?item.secret.substring(0,30)+'…': '••••••'}</span><button onclick="copyToClipboard('${item.secret.replace(/'/g,"\\'")}')" class="text-cyan-500 text-xs">📋</button></div>
+            ${item.type==='pass'?`<button onclick="toggleShowSecret('show-${item.id}','${item.secret}')" class="text-xs mt-2 text-zinc-400">👁️ показать пароль</button><span id="show-${item.id}" class="hidden text-xs break-all">${item.secret}</span>`:''}
+        </div>
+    `).join('');
+}
+function toggleShowSecret(elemId, secret){ let el=document.getElementById(elemId); if(el.classList.contains('hidden')){ el.classList.remove('hidden'); el.innerText=secret; }else{ el.classList.add('hidden'); } }
+function editVaultEntry(id){ let item=vaultItems.find(i=>i.id===id); if(!item) return; let newTitle=prompt("Новое название:",item.title); if(newTitle) item.title=newTitle; if(item.type==='pass'){ let newLogin=prompt("Логин:",item.login||""); if(newLogin!==null) item.login=newLogin; let newSecret=prompt("Пароль:",item.secret); if(newSecret!==null) item.secret=newSecret; }else{ let newSeed=prompt("Seed-фраза:",item.secret); if(newSeed!==null) item.secret=newSeed; } saveEncryptedVault(); renderVaultList(); showToast("Запись обновлена","✅"); }
 function saveVaultEntry(){ if(!currentMasterKey){ showToast("Сейф не открыт","🔒"); return; } let title,secret,login='',type=vaultMode; if(vaultMode==='pass'){ title=document.getElementById('vaultTitle').value.trim(); login=document.getElementById('vaultLogin').value.trim(); secret=document.getElementById('vaultSecret').value.trim(); if(!title||!secret) return; }else{ title=document.getElementById('seedTitle').value.trim(); secret=document.getElementById('seedPhrase').value.trim(); if(!title||!secret) return; } vaultItems.push({id:Date.now(),type,title,login,secret}); saveEncryptedVault(); renderVaultList(); document.getElementById('vaultTitle').value=''; document.getElementById('vaultLogin').value=''; document.getElementById('vaultSecret').value=''; document.getElementById('seedTitle').value=''; document.getElementById('seedPhrase').value=''; showToast("Данные зашифрованы","🛡️"); }
 function deleteVaultItem(id){ vaultItems=vaultItems.filter(i=>i.id!==id); saveEncryptedVault(); renderVaultList(); }
 function saveEncryptedVault(){ if(currentMasterKey) localStorage.setItem('mv_vault_data', CryptoJS.AES.encrypt(JSON.stringify(vaultItems),currentMasterKey).toString()); }
 function copyToClipboard(text){ navigator.clipboard.writeText(text); showToast("Скопировано","📋"); }
-function toggleSecretShow(id){ let inp=document.getElementById(id); if(inp) inp.type=inp.type==='password'?'text':'password'; }
 function setVaultMode(mode){ vaultMode=mode; document.getElementById('passForm').classList.toggle('hidden',mode!=='pass'); document.getElementById('seedForm').classList.toggle('hidden',mode!=='seed'); document.getElementById('modePassBtn').classList.toggle('bg-zinc-800',mode==='pass'); document.getElementById('modeSeedBtn').classList.toggle('bg-zinc-800',mode==='seed'); }
-function genPassword(){ let chars="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*"; let p=""; for(let i=0;i<14;i++) p+=chars[Math.floor(Math.random()*chars.length)]; document.getElementById('vaultSecret').value=p; }
-function pasteClipboard(){ navigator.clipboard.readText().then(t=>document.getElementById('vaultSecret').value=t).catch(()=>showToast("Нет доступа","⚠️")); }
+function genPassword(){ let chars="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*"; let p=""; for(let i=0;i<14;i++) p+=chars[Math.floor(Math.random()*chars.length)]; document.getElementById('vaultSecret').value=p; updateStrengthMeter('secretStrength',p); }
+function pasteClipboard(){ navigator.clipboard.readText().then(t=>{ document.getElementById('vaultSecret').value=t; updateStrengthMeter('secretStrength',t); }).catch(()=>showToast("Нет доступа","⚠️")); }
 function toggleSecretField(){ let f=document.getElementById('vaultSecret'); if(f) f.type=f.type==='password'?'text':'password'; }
 
-// ======================== 3. ИГРА (без изменений, стабильная) ========================
+// --------------------------------------------------------------
+// 4. ИГРА (оставлена без изменений, но скопирована из предыдущей версии)
+// --------------------------------------------------------------
 const W=8; let gameBoard=[], gameScore=0, gameLevel=1, selectedIdx=null, gameBusy=false;
 const COLORS_LIST=['🔴','🟡','🟢','🔵','🟣'], BOMB='💣', PLANE='✈️', ICE='❄️', WALL='🧱';
 class Tile{ constructor(type,color=null,hp=1){ this.type=type; this.color=color; this.hp=hp; } display(){ if(this.type==='bomb')return BOMB; if(this.type==='plane')return PLANE; if(this.type==='ice')return ICE; if(this.type==='wall')return WALL; return this.color; } }
@@ -209,37 +330,37 @@ function clearMatchesSilent(){ let m=findAllMatches(); if(m.size===0) return fal
 Tile.prototype.clone=function(){ return new Tile(this.type,this.color,this.hp); };
 function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
-// ======================== 4. МАТРИЦА и ПОМОДОРО ========================
-// Matrix animation
-let matrixInterval=null;
-const canvas=document.getElementById('matrixCanvas');
-let ctx=null;
-let matrixActive=false;
-function initMatrix(){ if(!canvas) return; canvas.width=window.innerWidth; canvas.height=window.innerHeight; ctx=canvas.getContext('2d'); const chars="01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン"; const fontSize=20; let columns=Math.ceil(canvas.width/fontSize); let drops=[]; for(let i=0;i<columns;i++) drops[i]=1; function draw(){ if(!ctx || !matrixActive) return; ctx.fillStyle='rgba(0,0,0,0.05)'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle='#0f0'; ctx.font=fontSize+'px monospace'; for(let i=0;i<drops.length;i++){ let text=chars[Math.floor(Math.random()*chars.length)]; ctx.fillText(text,i*fontSize,drops[i]*fontSize); if(drops[i]*fontSize>canvas.height && Math.random()>0.975) drops[i]=0; drops[i]++; } } if(matrixInterval) clearInterval(matrixInterval); matrixInterval=setInterval(draw,50); }
+// --------------------------------------------------------------
+// 5. МАТРИЦА и ПОМОДОРО
+// --------------------------------------------------------------
+let matrixInterval=null; let matrixActive=false;
+function initMatrix(){ if(!canvas) return; const canvas=document.getElementById('matrixCanvas'); canvas.width=window.innerWidth; canvas.height=window.innerHeight; let ctx=canvas.getContext('2d'); const chars="01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン"; const fontSize=18; let columns=Math.ceil(canvas.width/fontSize); let drops=[]; for(let i=0;i<columns;i++) drops[i]=1; function draw(){ if(!ctx || !matrixActive) return; ctx.fillStyle='rgba(0,0,0,0.05)'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.fillStyle='#0f0'; ctx.font=fontSize+'px monospace'; for(let i=0;i<drops.length;i++){ let text=chars[Math.floor(Math.random()*chars.length)]; ctx.fillText(text,i*fontSize,drops[i]*fontSize); if(drops[i]*fontSize>canvas.height && Math.random()>0.975) drops[i]=0; drops[i]++; } } if(matrixInterval) clearInterval(matrixInterval); matrixInterval=setInterval(draw,50); }
 function startMatrix(){ matrixActive=true; document.body.classList.add('matrix-active'); initMatrix(); }
-function stopMatrix(){ matrixActive=false; if(matrixInterval){ clearInterval(matrixInterval); matrixInterval=null; } if(ctx){ ctx.clearRect(0,0,canvas.width,canvas.height); } document.body.classList.remove('matrix-active'); }
+function stopMatrix(){ matrixActive=false; if(matrixInterval){ clearInterval(matrixInterval); matrixInterval=null; } let canvas=document.getElementById('matrixCanvas'); let ctx=canvas?.getContext('2d'); if(ctx) ctx.clearRect(0,0,canvas.width,canvas.height); document.body.classList.remove('matrix-active'); }
 function toggleMatrix(e){ if(e.target.checked) startMatrix(); else stopMatrix(); }
-window.addEventListener('resize',()=>{ if(matrixActive){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; initMatrix(); } });
+window.addEventListener('resize',()=>{ if(matrixActive){ let canvas=document.getElementById('matrixCanvas'); canvas.width=window.innerWidth; canvas.height=window.innerHeight; initMatrix(); } });
+document.getElementById('matrixToggle')?.addEventListener('change',toggleMatrix);
 
-// Pomodoro timer
-let pomodoroInterval=null;
-let pomodoroSeconds=25*60;
-let pomodoroRunning=false;
+let pomodoroInterval=null, pomodoroSeconds=25*60, pomodoroRunning=false;
 function updateTimerDisplay(){ let mins=Math.floor(pomodoroSeconds/60); let secs=pomodoroSeconds%60; document.getElementById('timerDisplay').innerText=`${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`; }
-function startPomodoro(){ if(pomodoroInterval) clearInterval(pomodoroInterval); pomodoroRunning=true; pomodoroInterval=setInterval(()=>{ if(pomodoroSeconds<=0){ clearInterval(pomodoroInterval); pomodoroRunning=false; showToast("⏰ Время вышло! Сделайте перерыв.","🍅"); if(Notification.permission==='granted') new Notification('Pomodoro','body: Время концентрации закончилось'); pomodoroSeconds=25*60; updateTimerDisplay(); document.getElementById('pomodoroBtn').innerText='Старт'; }else{ pomodoroSeconds--; updateTimerDisplay(); } },1000); document.getElementById('pomodoroBtn').innerText='⏸️ Стоп'; }
+function startPomodoro(){ if(pomodoroInterval) clearInterval(pomodoroInterval); pomodoroRunning=true; pomodoroInterval=setInterval(()=>{ if(pomodoroSeconds<=0){ clearInterval(pomodoroInterval); pomodoroRunning=false; showToast("⏰ Время вышло! Сделайте перерыв.","🍅"); if(Notification.permission==='granted') new Notification('Pomodoro','Время концентрации закончилось'); pomodoroSeconds=25*60; updateTimerDisplay(); document.getElementById('pomodoroBtn').innerText='Старт'; }else{ pomodoroSeconds--; updateTimerDisplay(); } },1000); document.getElementById('pomodoroBtn').innerText='⏸️ Стоп'; }
 function stopPomodoro(){ if(pomodoroInterval){ clearInterval(pomodoroInterval); pomodoroInterval=null; } pomodoroRunning=false; pomodoroSeconds=25*60; updateTimerDisplay(); document.getElementById('pomodoroBtn').innerText='Старт'; }
 function togglePomodoro(){ if(pomodoroRunning) stopPomodoro(); else startPomodoro(); }
 document.getElementById('pomodoroBtn')?.addEventListener('click',togglePomodoro);
-document.getElementById('matrixToggle')?.addEventListener('change',toggleMatrix);
 
-// ======================== 5. ОБЩИЕ ========================
-function switchTab(tab){
-    document.getElementById('notes-section').classList.toggle('hidden',tab!=='notes');
-    document.getElementById('crypto-section').classList.toggle('hidden',tab!=='crypto');
-    document.getElementById('game-section').classList.toggle('hidden',tab!=='game');
-    document.getElementById('settings-section').classList.toggle('hidden',tab!=='settings');
-    let tabs={notes:'tabNotes',crypto:'tabCrypto',game:'tabGame',settings:'tabSettings'};
-    for(let [key,id] of Object.entries(tabs)){ let btn=document.getElementById(id); if(key===tab){ btn.classList.add('text-accent'); btn.classList.remove('text-zinc-500'); }else{ btn.classList.remove('text-accent'); btn.classList.add('text-zinc-500'); } }
+// --------------------------------------------------------------
+// 6. НАВИГАЦИЯ, ТЕМА, ЭКСПОРТ
+// --------------------------------------------------------------
+function switchPanel(panel){
+    document.getElementById('notesPanel').classList.toggle('hidden', panel!=='notes');
+    document.getElementById('cryptoPanel').classList.toggle('hidden', panel!=='crypto');
+    document.getElementById('menuPanel').classList.toggle('hidden', panel!=='menu');
+    let tabs={notes:'tabNotes', crypto:'tabCrypto', menu:'tabMenu'};
+    for(let [key,id] of Object.entries(tabs)){
+        let btn=document.getElementById(id);
+        if(key===panel){ btn.classList.add('text-accent'); btn.classList.remove('text-zinc-500'); }
+        else{ btn.classList.remove('text-accent'); btn.classList.add('text-zinc-500'); }
+    }
 }
 function toggleTheme(){ let isDark=document.documentElement.classList.toggle('dark'); localStorage.setItem('theme',isDark?'dark':'light'); }
 function setAccent(color){ document.documentElement.style.setProperty('--color-accent',color); localStorage.setItem('accentColor',color); }
@@ -252,11 +373,9 @@ function showToast(msg,icon=''){ let t=document.getElementById('toast'); t.inner
 document.addEventListener('DOMContentLoaded',()=>{
     if(localStorage.getItem('theme')==='light') document.documentElement.classList.remove('dark'); else document.documentElement.classList.add('dark');
     let savedAccent=localStorage.getItem('accentColor'); if(savedAccent) document.documentElement.style.setProperty('--color-accent',savedAccent);
-    renderNotes(); initGame(); switchTab('notes');
+    renderNotes(); initGame(); switchPanel('notes');
     if(Notification.permission==='default') Notification.requestPermission();
-    // Матрица по умолчанию выключена
-    let matrixToggle=document.getElementById('matrixToggle');
-    if(matrixToggle) matrixToggle.checked=false;
+    let matrixToggle=document.getElementById('matrixToggle'); if(matrixToggle) matrixToggle.checked=false;
 });
 </script>
 </body>
