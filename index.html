@@ -2,18 +2,19 @@
 <html lang="ru" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>MindVault Pro — стабильная версия</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root { --color-accent: #f43f5e; --color-accent-hover: #e11d48; }
-        * { box-sizing: border-box; user-select: none; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { font-family: 'Plus Jakarta Sans', sans-serif; background: #09090b; color: #fafafa; transition: background 0.2s; }
         html.light body { background: #f4f4f5; color: #18181b; }
-        .nav-btn { min-height: 44px; }
-        .main-safe { padding-bottom: 5rem; }
+        .nav-btn { min-height: 44px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+        .tab-active { background-color: var(--color-accent) !important; color: white !important; }
+        .note-tab-btn { transition: all 0.2s; white-space: nowrap; }
         .game-grid {
             display: grid;
             grid-template-columns: repeat(8, 1fr);
@@ -31,29 +32,22 @@
             border-radius: 12px;
             background: rgba(255,255,255,0.08);
             cursor: pointer;
-            transition: transform 0.05s linear, filter 0.1s;
+            transition: transform 0.05s linear;
             backdrop-filter: blur(2px);
         }
         html.light .candy { background: rgba(0,0,0,0.05); }
         .candy.selected { transform: scale(1.05); background: var(--color-accent); box-shadow: 0 0 0 2px white; }
         .pop-effect { animation: pop 0.12s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
-        @keyframes pop { 0% { transform: scale(1); opacity: 1; } 100% { transform: scale(0.2); opacity: 0; } }
+        @keyframes pop { 100% { transform: scale(0.2); opacity: 0; } }
         .fall-effect { animation: fall 0.2s ease-out; }
         @keyframes fall { from { transform: translateY(-35px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .bomb-pulse { animation: pulse 0.2s infinite alternate; }
-        @keyframes pulse { from { filter: drop-shadow(0 0 2px red); } to { filter: drop-shadow(0 0 10px #ff4444); } }
-        .plane-fly {
-            position: fixed;
-            font-size: 2rem;
-            pointer-events: none;
-            z-index: 200;
-            filter: drop-shadow(0 4px 6px black);
-            transition: none;
-        }
+        @keyframes pulse { to { filter: drop-shadow(0 0 10px #ff4444); } }
+        .plane-fly { position: fixed; font-size: 2rem; pointer-events: none; z-index: 200; filter: drop-shadow(0 4px 6px black); }
         .toast { animation: fadeIn 0.2s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
-        .tab-active { background-color: var(--color-accent) !important; color: white !important; }
-        .note-tab-btn { transition: all 0.2s; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
 </head>
 <body class="dark">
@@ -72,11 +66,11 @@
         <!-- ЗАМЕТКИ -->
         <section id="notes-section">
             <div id="edit-bar" class="hidden bg-amber-500/20 p-3 rounded-xl justify-between mb-3"><span>✏️ Редактирование</span><button onclick="cancelEditNote()">Отмена</button></div>
-            <div class="flex gap-2 overflow-auto pb-2">
-                <button onclick="filterNotes('all',this)" class="note-tab-btn tab-active px-3 py-1 rounded-lg text-sm font-semibold">Все</button>
-                <button onclick="filterNotes('💡 Мысли',this)" class="note-tab-btn px-3 py-1 rounded-lg bg-zinc-800 text-zinc-300">💡 Мысли</button>
-                <button onclick="filterNotes('📅 Задачи',this)" class="note-tab-btn px-3 py-1 rounded-lg bg-zinc-800 text-zinc-300">📅 Задачи</button>
-                <button onclick="filterNotes('💼 Работа',this)" class="note-tab-btn px-3 py-1 rounded-lg bg-zinc-800 text-zinc-300">💼 Работа</button>
+            <div class="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+                <button onclick="filterNotes('all',this)" class="note-tab-btn tab-active px-3 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap">Все</button>
+                <button onclick="filterNotes('💡 Мысли',this)" class="note-tab-btn px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-300 whitespace-nowrap">💡 Мысли</button>
+                <button onclick="filterNotes('📅 Задачи',this)" class="note-tab-btn px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-300 whitespace-nowrap">📅 Задачи</button>
+                <button onclick="filterNotes('💼 Работа',this)" class="note-tab-btn px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-300 whitespace-nowrap">💼 Работа</button>
             </div>
             <div class="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-4">
                 <textarea id="noteText" class="w-full bg-zinc-950 rounded-xl p-3 text-sm border border-zinc-800 h-24 resize-none" placeholder="Текст заметки, #тег, **жирный**..."></textarea>
@@ -130,12 +124,12 @@
         </section>
     </main>
 
-    <nav class="fixed bottom-0 left-0 right-0 bg-zinc-900/90 backdrop-blur-lg border-t border-zinc-800 py-2">
+    <nav class="fixed bottom-0 left-0 right-0 bg-zinc-900/90 backdrop-blur-lg border-t border-zinc-800 py-2 pb-safe">
         <div class="max-w-md mx-auto flex justify-around">
-            <button onclick="switchTab('notes')" id="tabNotes" class="nav-btn flex flex-col items-center text-accent"><span class="text-xl">📝</span><span class="text-[10px]">Заметки</span></button>
-            <button onclick="switchTab('crypto')" id="tabCrypto" class="nav-btn flex flex-col items-center text-zinc-500"><span class="text-xl">🔐</span><span class="text-[10px]">Сейф</span></button>
-            <button onclick="switchTab('game')" id="tabGame" class="nav-btn flex flex-col items-center text-zinc-500"><span class="text-xl">🎮</span><span class="text-[10px]">Игра</span></button>
-            <button onclick="switchTab('settings')" id="tabSettings" class="nav-btn flex flex-col items-center text-zinc-500"><span class="text-xl">⚙️</span><span class="text-[10px]">Настройки</span></button>
+            <button onclick="switchTab('notes')" id="tabNotes" class="nav-btn text-accent"><span class="text-xl">📝</span><span class="text-[10px]">Заметки</span></button>
+            <button onclick="switchTab('crypto')" id="tabCrypto" class="nav-btn text-zinc-500"><span class="text-xl">🔐</span><span class="text-[10px]">Сейф</span></button>
+            <button onclick="switchTab('game')" id="tabGame" class="nav-btn text-zinc-500"><span class="text-xl">🎮</span><span class="text-[10px]">Игра</span></button>
+            <button onclick="switchTab('settings')" id="tabSettings" class="nav-btn text-zinc-500"><span class="text-xl">⚙️</span><span class="text-[10px]">Настройки</span></button>
         </div>
     </nav>
 
@@ -215,8 +209,8 @@ function closePhotoModal() { document.getElementById('photo-modal').classList.ad
 function filterNotes(cat, btn) {
     currentNoteFilter = cat;
     renderNotes();
-    document.querySelectorAll('.note-tab-btn').forEach(b => { b.classList.remove('tab-active', 'bg-accent'); b.classList.add('bg-zinc-800', 'text-zinc-300'); });
-    if (btn) { btn.classList.add('tab-active'); btn.classList.remove('bg-zinc-800'); btn.style.backgroundColor = 'var(--color-accent)'; }
+    document.querySelectorAll('.note-tab-btn').forEach(b => { b.classList.remove('tab-active'); b.classList.add('bg-zinc-800', 'text-zinc-300'); });
+    if (btn) { btn.classList.add('tab-active'); btn.classList.remove('bg-zinc-800'); }
 }
 
 // ----------------------------------------------------------------------
@@ -232,7 +226,6 @@ function unlockVault() {
     let key = CryptoJS.SHA256(pass).toString();
     let encrypted = localStorage.getItem('mv_vault_data');
     if (!encrypted) {
-        // первый вход: создаём пустой сейф
         let empty = CryptoJS.AES.encrypt(JSON.stringify([]), key).toString();
         localStorage.setItem('mv_vault_data', empty);
         currentMasterKey = key;
