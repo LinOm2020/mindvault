@@ -50,31 +50,44 @@
         textarea:focus, input:focus { outline: none; border-color: var(--color-accent) !important; }
         html.light body { background-color: #f4f4f5; color: #18181b; }
         
-        /* Game Styles */
+        /* Продвинутые стили для игры 3-в-ряд */
         .game-grid {
             display: grid;
             grid-template-columns: repeat(8, 1fr);
-            gap: 2px;
+            gap: 4px;
             width: 100%;
             aspect-ratio: 1 / 1;
-            background-color: rgba(0,0,0,0.2);
+            background-color: rgba(0,0,0,0.25);
             border-radius: 12px;
-            padding: 4px;
+            padding: 6px;
+            box-shadow: inset 0 4px 10px rgba(0,0,0,0.5);
         }
         .candy {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: clamp(1.2rem, 6vw, 2rem);
-            border-radius: 8px;
+            font-size: clamp(1.5rem, 7vw, 2.2rem);
+            border-radius: 10px;
             background: rgba(255,255,255,0.05);
             cursor: pointer;
             user-select: none;
-            transition: transform 0.2s, background-color 0.2s;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s, background-color 0.2s;
         }
         html.light .candy { background: rgba(0,0,0,0.05); }
         .candy.selected { transform: scale(1.15); z-index: 10; background: var(--color-accent); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
         .candy:active { transform: scale(0.9); }
+        .candy.popping { transform: scale(0); opacity: 0; }
+        .candy.bomb-anim { animation: bombPulse 0.4s infinite alternate; filter: drop-shadow(0 0 8px rgba(255,50,50,0.8)); }
+        
+        @keyframes bombPulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.15); }
+        }
+        @keyframes fallDrop {
+            0% { transform: translateY(-20px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        .falling { animation: fallDrop 0.3s ease-out forwards; }
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col dark">
@@ -145,7 +158,6 @@
 
             <div id="crypto-content" class="flex flex-col gap-4 hidden">
                 <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xl">
-                    
                     <div class="flex gap-2 mb-3 text-xs bg-zinc-100 dark:bg-zinc-950 p-1 rounded-xl">
                         <button onclick="setVaultType('pass')" id="vt-pass" class="flex-1 py-1.5 rounded-lg bg-white dark:bg-zinc-800 shadow text-zinc-900 dark:text-white font-semibold transition-all">Пароль</button>
                         <button onclick="setVaultType('seed')" id="vt-seed" class="flex-1 py-1.5 rounded-lg text-zinc-500 dark:text-zinc-500 font-semibold transition-all">Seed-фраза</button>
@@ -167,13 +179,12 @@
                     </div>
 
                     <div id="form-seed" class="hidden">
-                        <input type="text" id="seed-title" class="w-full mb-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600" placeholder="Название кошелька (TrustWallet)">
+                        <input type="text" id="seed-title" class="w-full mb-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600" placeholder="Название кошелька">
                         <div class="relative mb-3">
                             <textarea id="seed-value" class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 pr-10 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 h-20 resize-none font-mono" placeholder="введите 12 или 24 слова через пробел"></textarea>
                             <button onclick="pasteFromClipboard('seed-value')" class="absolute right-2 top-2 p-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-lg hover:text-cyan-500 text-xs">📋</button>
                         </div>
                     </div>
-
                     <button onclick="saveVaultEntry()" class="w-full py-2 bg-cyan-500 hover:bg-cyan-600 rounded-xl text-xs font-bold text-white transition-colors">Зашифровать и сохранить</button>
                 </div>
                 <div id="passwords-list" class="flex flex-col gap-2 overflow-y-auto custom-scroll" style="max-height:35vh"></div>
@@ -186,10 +197,12 @@
                 <div>Счет: <span id="game-score" class="text-lg">0</span></div>
             </div>
             
-            <div class="game-grid shadow-2xl" id="game-board">
+            <div class="game-grid" id="game-board">
                 </div>
             
-            <p class="text-center text-[10px] text-zinc-500 mt-2">Тапайте на соседние элементы, чтобы собрать 3 в ряд</p>
+            <p class="text-center text-[10px] text-zinc-500 mt-2 font-medium bg-zinc-100 dark:bg-zinc-900 p-2 rounded-lg border border-zinc-200 dark:border-zinc-800">
+                Соберите 4 в ряд, чтобы создать <span class="text-lg leading-none">💣</span><br>Нажмите на бомбу, чтобы взорвать всё вокруг!
+            </p>
         </section>
 
         <section id="section-settings" class="flex flex-col gap-4 hidden">
@@ -201,7 +214,7 @@
                 </div>
                 <div class="flex flex-col gap-2">
                     <span class="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Акцентный цвет</span>
-                    <div class="flex gap-3 mt-1">
+                    <div class="flex gap-3 mt-1" id="accent-colors-container">
                         <button onclick="setAccentColor('#f43f5e','#e11d48',this)" data-color-btn class="w-9 h-9 rounded-full border-2 border-zinc-300 transition-all active:scale-90 shadow" style="background:#f43f5e"></button>
                         <button onclick="setAccentColor('#3b82f6','#2563eb',this)" data-color-btn class="w-9 h-9 rounded-full border-2 border-zinc-300 transition-all active:scale-90 shadow" style="background:#3b82f6"></button>
                         <button onclick="setAccentColor('#10b981','#059669',this)" data-color-btn class="w-9 h-9 rounded-full border-2 border-zinc-300 transition-all active:scale-90 shadow" style="background:#10b981"></button>
@@ -256,460 +269,304 @@
     </nav>
 
 <script>
-// ==================== СОСТОЯНИЕ ====================
-let notes = [];
-let currentFilter = 'all';
-let activeTab = 'notes';
-let editingNoteId = null;
-let attachedImageBase64 = null;
-let currentMasterKey = '';
-let vaultData = null;
-let vaultType = 'pass'; 
+// ==================== СОСТОЯНИЕ & ЯДРО ====================
+let notes = []; let currentFilter = 'all'; let activeTab = 'notes'; let editingNoteId = null; let attachedImageBase64 = null;
+let currentMasterKey = ''; let vaultData = null; let vaultType = 'pass'; 
 
-// ==================== ИНИЦИАЛИЗАЦИЯ ====================
-document.addEventListener('DOMContentLoaded', () => {
-    loadSettings();
-    loadNotes();
-    renderNotes();
-    initServiceWorker();
-    initGame(); // Запускаем игру в фоне
-});
+document.addEventListener('DOMContentLoaded', () => { loadSettings(); loadNotes(); renderNotes(); initServiceWorker(); initGame(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) lockVaultAutomatically(); });
 
-document.addEventListener('visibilitychange', () => {
-    if (document.hidden) lockVaultAutomatically();
-});
+function lockVaultAutomatically() { currentMasterKey = ''; document.getElementById('crypto-content').classList.add('hidden'); document.getElementById('crypto-auth').classList.remove('hidden'); document.getElementById('master-password').value = ''; }
 
-function lockVaultAutomatically() {
-    currentMasterKey = ''; document.getElementById('crypto-content').classList.add('hidden');
-    document.getElementById('crypto-auth').classList.remove('hidden'); document.getElementById('master-password').value = '';
-}
-
-// ==================== SERVICE WORKER & PUSH ====================
 async function initServiceWorker() {
     if ('serviceWorker' in navigator) {
         try {
             await navigator.serviceWorker.register('./sw.js');
-            document.getElementById('sw-badge').textContent = 'Push: Вкл';
-            document.getElementById('sw-badge').className = 'text-[10px] font-bold px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20';
-            document.getElementById('sw-status-text').textContent = 'Синхронизация активна';
+            document.getElementById('sw-badge').textContent = 'Push: Вкл'; document.getElementById('sw-badge').className = 'text-[10px] font-bold px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'; document.getElementById('sw-status-text').textContent = 'Синхронизация активна';
             if (Notification.permission === "default") Notification.requestPermission();
         } catch (e) { console.warn(e); }
     }
 }
-function sendToServiceWorker(id, text, timestamp) {
-    if (navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({ action: 'schedule-notification', id: String(id), text, time: timestamp });
-    }
-}
+function sendToServiceWorker(id, text, timestamp) { if (navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage({ action: 'schedule-notification', id: String(id), text, time: timestamp }); }
 
-// ==================== ЗАМЕТКИ (MARKDOWN + ТЕГИ) ====================
+// ==================== ЗАМЕТКИ & ФОТО ====================
 function loadNotes() { try { notes = JSON.parse(localStorage.getItem('mv_notes')) || []; } catch { notes = []; } }
 function saveNotesToStorage() { localStorage.setItem('mv_notes', JSON.stringify(notes)); }
+function escapeHTML(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
 
-function escapeHTML(str) {
-    const div = document.createElement('div'); div.textContent = str; return div.innerHTML;
-}
-
-// Умный парсер Markdown и хештегов
 function parseNoteText(text) {
-    let safe = escapeHTML(text);
-    safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    safe = safe.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    // Делаем теги кликабельными
-    safe = safe.replace(/(^|\s)#([a-zA-Zа-яА-Я0-9_]+)/g, "$1<span class='font-bold cursor-pointer transition-colors' style='color:var(--color-accent)' onclick='filterByTag(\"#$2\")'>#$2</span>");
-    return safe.replace(/\n/g, '<br>');
+    let s = escapeHTML(text).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>');
+    return s.replace(/(^|\s)#([a-zA-Zа-яА-Я0-9_]+)/g, "$1<span class='font-bold cursor-pointer transition-colors' style='color:var(--color-accent)' onclick='filterByTag(\"#$2\")'>#$2</span>").replace(/\n/g, '<br>');
 }
-
 function filterByTag(tag) {
-    currentFilter = tag;
-    // Сбрасываем визуально табы
-    document.querySelectorAll('.note-tab-btn').forEach(b => {
-        b.classList.remove('tab-active', 'border-transparent');
-        b.classList.add('bg-white', 'dark:bg-zinc-800', 'text-zinc-600', 'dark:text-zinc-400', 'border-zinc-200', 'dark:border-zinc-700');
-        b.style.backgroundColor = '';
-    });
+    currentFilter = tag; document.querySelectorAll('.note-tab-btn').forEach(b => { b.classList.remove('tab-active', 'border-transparent'); b.classList.add('bg-white', 'dark:bg-zinc-800', 'text-zinc-600', 'dark:text-zinc-400', 'border-zinc-200', 'dark:border-zinc-700'); b.style.backgroundColor = ''; });
     renderNotes();
 }
-
 function parseReminderDate(text) {
-    const clean = text.toLowerCase(); let date = new Date(); let hasDate = false;
-    if (clean.includes('сегодня')) hasDate = true;
-    else if (clean.includes('завтра')) { date.setDate(date.getDate() + 1); hasDate = true; }
-    else if (clean.includes('послезавтра')) { date.setDate(date.getDate() + 2); hasDate = true; }
-    else {
-        const days = ['воскресень', 'понедельник', 'вторник', 'сред', 'четверг', 'пятниц', 'суббот'];
-        for (let i = 0; i < 7; i++) {
-            if (clean.includes(days[i])) {
-                let dist = i - date.getDay(); if (dist <= 0) dist += 7;
-                date.setDate(date.getDate() + dist); hasDate = true; break;
-            }
-        }
-    }
-    const hard = text.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
-    if (hard) { date = new Date(+hard[3], +hard[2] - 1, +hard[1]); hasDate = true; }
-    if (!hasDate) return null;
-    const time = clean.match(/(\d{1,2})[:h](\d{2})/);
-    if (time) date.setHours(+time[1], +time[2], 0, 0); else date.setHours(9, 0, 0, 0);
-    return date;
+    const cl = text.toLowerCase(); let d = new Date(); let has = false;
+    if (cl.includes('сегодня')) has = true; else if (cl.includes('завтра')) { d.setDate(d.getDate() + 1); has = true; } else if (cl.includes('послезавтра')) { d.setDate(d.getDate() + 2); has = true; }
+    else { const days = ['воскресень', 'понедельник', 'вторник', 'сред', 'четверг', 'пятниц', 'суббот']; for (let i=0; i<7; i++) { if (cl.includes(days[i])) { let dist = i - d.getDay(); if (dist<=0) dist+=7; d.setDate(d.getDate() + dist); has = true; break; } } }
+    const hr = text.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/); if (hr) { d = new Date(+hr[3], +hr[2] - 1, +hr[1]); has = true; }
+    if (!has) return null;
+    const tm = cl.match(/(\d{1,2})[:h](\d{2})/); if (tm) d.setHours(+tm[1], +tm[2], 0, 0); else d.setHours(9, 0, 0, 0); return d;
 }
 
 function previewImage(input) {
-    const file = input.files[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-        const img = new Image();
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            let w = img.width, h = img.height; const MAX = 1000;
-            if(w > MAX || h > MAX) { if(w > h){h=h*MAX/w;w=MAX;} else{w=w*MAX/h;h=MAX;} }
-            canvas.width = w; canvas.height = h; canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            attachedImageBase64 = canvas.toDataURL('image/jpeg', 0.6);
-            document.getElementById('image-preview').src = attachedImageBase64;
-            document.getElementById('image-preview-container').classList.remove('hidden');
-        };
-        img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+    const f = input.files[0]; if (!f) return; const r = new FileReader();
+    r.onload = e => { const i = new Image(); i.onload = () => { const c = document.createElement('canvas'); let w = i.width, h = i.height; const M = 1000; if(w>M || h>M){if(w>h){h=h*M/w;w=M;}else{w=w*M/h;h=M;}} c.width=w; c.height=h; c.getContext('2d').drawImage(i,0,0,w,h); attachedImageBase64 = c.toDataURL('image/jpeg',0.6); document.getElementById('image-preview').src = attachedImageBase64; document.getElementById('image-preview-container').classList.remove('hidden'); }; i.src = e.target.result; }; r.readAsDataURL(f);
 }
 function clearAttachedImage() { attachedImageBase64 = null; document.getElementById('note-image-input').value = ''; document.getElementById('image-preview-container').classList.add('hidden'); }
-
-function openPhotoModal(src) { document.getElementById('modal-img').src = src; document.getElementById('photo-modal').classList.remove('hidden'); document.getElementById('photo-modal').classList.add('flex'); }
+function openPhotoModal(s) { document.getElementById('modal-img').src = s; document.getElementById('photo-modal').classList.remove('hidden'); document.getElementById('photo-modal').classList.add('flex'); }
 function closePhotoModal() { document.getElementById('photo-modal').classList.add('hidden'); document.getElementById('photo-modal').classList.remove('flex'); }
 
 function saveNote() {
-    const text = document.getElementById('note-input').value.trim();
-    if (!text && !attachedImageBase64) { showToast('Пусто!', '⚠️'); return; }
-
+    const txt = document.getElementById('note-input').value.trim(); if (!txt && !attachedImageBase64) { showToast('Пусто!', '⚠️'); return; }
     const cat = (currentFilter === 'all' || currentFilter.startsWith('#')) ? '💡 Мысли' : currentFilter;
-    const pDate = parseReminderDate(text);
-    const rem = pDate ? pDate.toLocaleString('ru', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : null;
-
-    if (editingNoteId) {
-        notes = notes.map(n => n.id === editingNoteId ? { ...n, text, category: cat, reminder: rem, image: attachedImageBase64 ?? n.image } : n);
-        cancelEdit(); showToast('Сохранено!', '✏️');
-    } else {
-        const n = { id: Date.now(), text, category: cat, date: new Date().toLocaleDateString('ru'), reminder: rem, image: attachedImageBase64 };
-        notes.unshift(n); showToast('Сохранено!', '✅');
-        if (pDate && pDate > new Date()) sendToServiceWorker(n.id, text || 'Напоминание', pDate.getTime());
-    }
+    const pD = parseReminderDate(txt); const rem = pD ? pD.toLocaleString('ru', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : null;
+    if (editingNoteId) { notes = notes.map(n => n.id === editingNoteId ? { ...n, text:txt, category: cat, reminder: rem, image: attachedImageBase64 ?? n.image } : n); cancelEdit(); showToast('Сохранено!', '✏️'); } 
+    else { const n = { id: Date.now(), text:txt, category: cat, date: new Date().toLocaleDateString('ru'), reminder: rem, image: attachedImageBase64 }; notes.unshift(n); showToast('Сохранено!', '✅'); if (pD && pD > new Date()) sendToServiceWorker(n.id, txt || 'Напоминание', pD.getTime()); }
     saveNotesToStorage(); document.getElementById('note-input').value = ''; clearAttachedImage(); renderNotes();
 }
-
 function editNote(id) {
-    const n = notes.find(x => x.id === id); if (!n) return;
-    editingNoteId = id; document.getElementById('note-input').value = n.text;
-    if (n.image) { attachedImageBase64 = n.image; document.getElementById('image-preview').src = n.image; document.getElementById('image-preview-container').classList.remove('hidden'); }
-    else clearAttachedImage();
-    document.getElementById('edit-indicator').classList.remove('hidden');
-    window.scrollTo(0, 0);
+    const n = notes.find(x => x.id === id); if (!n) return; editingNoteId = id; document.getElementById('note-input').value = n.text;
+    if (n.image) { attachedImageBase64 = n.image; document.getElementById('image-preview').src = n.image; document.getElementById('image-preview-container').classList.remove('hidden'); } else clearAttachedImage();
+    document.getElementById('edit-indicator').classList.remove('hidden'); window.scrollTo(0, 0);
 }
 function cancelEdit() { editingNoteId = null; document.getElementById('note-input').value = ''; document.getElementById('edit-indicator').classList.add('hidden'); clearAttachedImage(); }
 function deleteNote(id) { if(confirm('Удалить?')) { notes = notes.filter(n => n.id !== id); saveNotesToStorage(); renderNotes(); } }
 
 function renderNotes() {
     const list = document.getElementById('notes-list'); list.innerHTML = '';
-    const filtered = currentFilter === 'all' ? notes : (currentFilter.startsWith('#') ? notes.filter(n => n.text.includes(currentFilter)) : notes.filter(n => n.category === currentFilter));
-    
-    if (filtered.length === 0) { list.innerHTML = `<div class="text-center py-8 text-zinc-500 text-xs">Ничего не найдено</div>`; return; }
-
-    filtered.forEach(n => {
-        const isEd = n.id === editingNoteId;
-        const div = document.createElement('div');
+    const f = currentFilter === 'all' ? notes : (currentFilter.startsWith('#') ? notes.filter(n => n.text.includes(currentFilter)) : notes.filter(n => n.category === currentFilter));
+    if (f.length === 0) { list.innerHTML = `<div class="text-center py-8 text-zinc-500 text-xs">Ничего не найдено</div>`; return; }
+    f.forEach(n => {
+        const isEd = n.id === editingNoteId; const div = document.createElement('div');
         div.className = `bg-white dark:bg-zinc-900 border ${isEd ? 'border-amber-500 ring-1 ring-amber-500/30' : 'border-zinc-200 dark:border-zinc-800'} rounded-xl p-3 flex flex-col gap-2 shadow-sm`;
-        div.innerHTML = `
-            <div class="flex items-center justify-between">
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">${n.category}</span>
-                <span class="text-[10px] text-zinc-500">${n.date}</span>
-            </div>
-            ${n.image ? `<img src="${n.image}" onclick="openPhotoModal('${n.image}')" class="w-full h-32 object-cover rounded-lg border border-zinc-200 dark:border-zinc-800">` : ''}
-            <div class="text-xs text-zinc-800 dark:text-zinc-200 leading-relaxed">${parseNoteText(n.text)}</div>
-            ${n.reminder ? `<div class="text-[10px] font-semibold text-amber-500 mt-1">🔔 ${n.reminder}</div>` : ''}
-            <div class="flex gap-2 justify-end mt-1">
-                <button onclick="editNote(${n.id})" class="text-zinc-400 hover:text-amber-500 px-1 text-xs">✏️</button>
-                <button onclick="deleteNote(${n.id})" class="text-zinc-400 hover:text-red-500 px-1 text-xs">🗑</button>
-            </div>`;
+        div.innerHTML = `<div class="flex items-center justify-between"><span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">${n.category}</span><span class="text-[10px] text-zinc-500">${n.date}</span></div>${n.image ? `<img src="${n.image}" onclick="openPhotoModal('${n.image}')" class="w-full h-32 object-cover rounded-lg border border-zinc-200 dark:border-zinc-800">` : ''}<div class="text-xs text-zinc-800 dark:text-zinc-200 leading-relaxed">${parseNoteText(n.text)}</div>${n.reminder ? `<div class="text-[10px] font-semibold text-amber-500 mt-1">🔔 ${n.reminder}</div>` : ''}<div class="flex gap-2 justify-end mt-1"><button onclick="editNote(${n.id})" class="text-zinc-400 hover:text-amber-500 px-1 text-xs">✏️</button><button onclick="deleteNote(${n.id})" class="text-zinc-400 hover:text-red-500 px-1 text-xs">🗑</button></div>`;
         list.appendChild(div);
     });
 }
+function filterNotes(cat, btn) { currentFilter = cat; document.querySelectorAll('.note-tab-btn').forEach(b => { b.classList.remove('tab-active', 'border-transparent'); b.classList.add('bg-white', 'dark:bg-zinc-800', 'text-zinc-600', 'dark:text-zinc-400', 'border-zinc-200', 'dark:border-zinc-700'); b.style.backgroundColor = ''; }); if(btn) { btn.classList.add('tab-active', 'border-transparent'); btn.classList.remove('bg-white', 'dark:bg-zinc-800', 'text-zinc-600', 'dark:text-zinc-400'); btn.style.backgroundColor = 'var(--color-accent)'; } renderNotes(); }
 
-function filterNotes(cat, btn) {
-    currentFilter = cat;
-    document.querySelectorAll('.note-tab-btn').forEach(b => {
-        b.classList.remove('tab-active', 'border-transparent');
-        b.classList.add('bg-white', 'dark:bg-zinc-800', 'text-zinc-600', 'dark:text-zinc-400', 'border-zinc-200', 'dark:border-zinc-700');
-        b.style.backgroundColor = '';
-    });
-    if(btn) {
-        btn.classList.add('tab-active', 'border-transparent');
-        btn.classList.remove('bg-white', 'dark:bg-zinc-800', 'text-zinc-600', 'dark:text-zinc-400');
-        btn.style.backgroundColor = 'var(--color-accent)';
-    }
-    renderNotes();
-}
-
-// ==================== СЕЙФ (SEED + PASS) ====================
-function setVaultType(type) {
-    vaultType = type;
-    document.getElementById('form-pass').classList.toggle('hidden', type !== 'pass');
-    document.getElementById('form-seed').classList.toggle('hidden', type !== 'seed');
-    
-    const bPass = document.getElementById('vt-pass');
-    const bSeed = document.getElementById('vt-seed');
-    if (type === 'pass') {
-        bPass.className = "flex-1 py-1.5 rounded-lg bg-white dark:bg-zinc-800 shadow text-zinc-900 dark:text-white font-semibold transition-all";
-        bSeed.className = "flex-1 py-1.5 rounded-lg text-zinc-500 font-semibold transition-all hover:bg-zinc-200 dark:hover:bg-zinc-800";
-    } else {
-        bSeed.className = "flex-1 py-1.5 rounded-lg bg-white dark:bg-zinc-800 shadow text-zinc-900 dark:text-white font-semibold transition-all";
-        bPass.className = "flex-1 py-1.5 rounded-lg text-zinc-500 font-semibold transition-all hover:bg-zinc-200 dark:hover:bg-zinc-800";
-    }
-}
-
-function unlockVault() {
-    const pass = document.getElementById('master-password').value; if (!pass) return;
-    currentMasterKey = CryptoJS.SHA256(pass).toString(); vaultData = localStorage.getItem('mv_vault');
-    if (vaultData) {
-        try { const bytes = CryptoJS.AES.decrypt(vaultData, currentMasterKey); if (!bytes.toString(CryptoJS.enc.Utf8)) throw new Error(); } 
-        catch (e) { showToast("Неверный пароль!", "❌"); currentMasterKey = ""; return; }
-    } else { vaultData = CryptoJS.AES.encrypt("[]", currentMasterKey).toString(); localStorage.setItem('mv_vault', vaultData); }
-    document.getElementById('crypto-auth').classList.add('hidden'); document.getElementById('crypto-content').classList.remove('hidden'); renderVault();
-}
-
+// ==================== СЕЙФ ====================
+function setVaultType(type) { vaultType = type; document.getElementById('form-pass').classList.toggle('hidden', type !== 'pass'); document.getElementById('form-seed').classList.toggle('hidden', type !== 'seed'); const bP = document.getElementById('vt-pass'); const bS = document.getElementById('vt-seed'); if (type === 'pass') { bP.className = "flex-1 py-1.5 rounded-lg bg-white dark:bg-zinc-800 shadow text-zinc-900 dark:text-white font-semibold transition-all"; bS.className = "flex-1 py-1.5 rounded-lg text-zinc-500 font-semibold transition-all hover:bg-zinc-200 dark:hover:bg-zinc-800"; } else { bS.className = "flex-1 py-1.5 rounded-lg bg-white dark:bg-zinc-800 shadow text-zinc-900 dark:text-white font-semibold transition-all"; bP.className = "flex-1 py-1.5 rounded-lg text-zinc-500 font-semibold transition-all hover:bg-zinc-200 dark:hover:bg-zinc-800"; } }
+function unlockVault() { const pass = document.getElementById('master-password').value; if (!pass) return; currentMasterKey = CryptoJS.SHA256(pass).toString(); vaultData = localStorage.getItem('mv_vault'); if (vaultData) { try { const bytes = CryptoJS.AES.decrypt(vaultData, currentMasterKey); if (!bytes.toString(CryptoJS.enc.Utf8)) throw new Error(); } catch (e) { showToast("Неверный пароль!", "❌"); currentMasterKey = ""; return; } } else { vaultData = CryptoJS.AES.encrypt("[]", currentMasterKey).toString(); localStorage.setItem('mv_vault', vaultData); } document.getElementById('crypto-auth').classList.add('hidden'); document.getElementById('crypto-content').classList.remove('hidden'); renderVault(); }
 function toggleFieldType(id) { const el = document.getElementById(id); el.type = el.type === 'password' ? 'text' : 'password'; }
 function generateSecurePassword() { const c = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789!@#$%^&*"; let p = ""; for(let i=0;i<16;i++) p+=c.charAt(Math.floor(Math.random()*c.length)); document.getElementById('pw-value').value = p; document.getElementById('pw-value').type = 'text'; }
-async function pasteFromClipboard(id) { try { document.getElementById(id).value = await navigator.clipboard.readText(); } catch(e){showToast("Нет доступа к буферу", "⚠️")} }
+async function pasteFromClipboard(id) { try { document.getElementById(id).value = await navigator.clipboard.readText(); } catch(e){showToast("Нет доступа", "⚠️")} }
+function saveVaultEntry() { let title, val, login = ""; if (vaultType === 'pass') { title = document.getElementById('pw-title').value; login = document.getElementById('pw-login').value; val = document.getElementById('pw-value').value; } else { title = document.getElementById('seed-title').value; val = document.getElementById('seed-value').value; } if(!title || !val) { showToast("Заполните поля", "⚠️"); return; } const list = JSON.parse(CryptoJS.AES.decrypt(vaultData, currentMasterKey).toString(CryptoJS.enc.Utf8)); list.push({ id: Date.now(), type: vaultType, title, login, val }); vaultData = CryptoJS.AES.encrypt(JSON.stringify(list), currentMasterKey).toString(); localStorage.setItem('mv_vault', vaultData); document.getElementById('pw-title').value=''; document.getElementById('pw-login').value=''; document.getElementById('pw-value').value=''; document.getElementById('seed-title').value=''; document.getElementById('seed-value').value=''; showToast("Зашифровано!", "🛡"); renderVault(); }
+function renderVault() { const list = document.getElementById('passwords-list'); list.innerHTML = ""; const arr = JSON.parse(CryptoJS.AES.decrypt(vaultData, currentMasterKey).toString(CryptoJS.enc.Utf8)); arr.forEach(p => { const isS = p.type === 'seed'; list.innerHTML += `<div class="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 flex flex-col gap-1 text-xs shadow-sm"><div class="flex justify-between items-start"><div><span class="text-[10px] font-bold px-1.5 py-0.5 bg-zinc-200 dark:bg-zinc-800 rounded text-zinc-500">${isS ? 'Seed' : 'Pass'}</span><span class="font-bold text-zinc-900 dark:text-zinc-100 ml-1">${escapeHTML(p.title)}</span>${p.login ? `<div class="text-[10px] text-zinc-500 mt-1">${escapeHTML(p.login)}</div>` : ''}</div><button onclick="navigator.clipboard.writeText('${p.val}');showToast('Скопировано!','📋');" class="text-cyan-500 hover:text-cyan-600 bg-cyan-500/10 px-2 py-1 rounded">Копировать</button></div>${isS ? `<textarea readonly class="w-full bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 mt-2 p-2 rounded-lg border border-zinc-200 dark:border-zinc-800 h-16 resize-none outline-none font-mono text-[10px]">${p.val}</textarea>` : `<div class="relative flex mt-1 bg-zinc-100 dark:bg-zinc-900 p-2 rounded-lg border border-zinc-200 dark:border-zinc-800"><input type="password" id="h-${p.id}" value="${p.val}" readonly class="w-full bg-transparent text-cyan-500 font-mono outline-none"><button onclick="toggleFieldType('h-${p.id}')" class="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400">👁</button></div>`}<button onclick="deleteVaultEntry(${p.id})" class="text-red-400 self-end mt-1 px-1">Удалить</button></div>`; }); }
+function deleteVaultEntry(id) { if(!confirm("Удалить?")) return; let arr = JSON.parse(CryptoJS.AES.decrypt(vaultData, currentMasterKey).toString(CryptoJS.enc.Utf8)); arr = arr.filter(x => x.id !== id); vaultData = CryptoJS.AES.encrypt(JSON.stringify(arr), currentMasterKey).toString(); localStorage.setItem('mv_vault', vaultData); renderVault(); }
 
-function saveVaultEntry() {
-    let title, val, login = "";
-    if (vaultType === 'pass') {
-        title = document.getElementById('pw-title').value; login = document.getElementById('pw-login').value; val = document.getElementById('pw-value').value;
-    } else {
-        title = document.getElementById('seed-title').value; val = document.getElementById('seed-value').value;
-    }
-    if(!title || !val) { showToast("Заполните поля", "⚠️"); return; }
-
-    const list = JSON.parse(CryptoJS.AES.decrypt(vaultData, currentMasterKey).toString(CryptoJS.enc.Utf8));
-    list.push({ id: Date.now(), type: vaultType, title, login, val });
-    vaultData = CryptoJS.AES.encrypt(JSON.stringify(list), currentMasterKey).toString(); localStorage.setItem('mv_vault', vaultData);
-    document.getElementById('pw-title').value=''; document.getElementById('pw-login').value=''; document.getElementById('pw-value').value=''; document.getElementById('seed-title').value=''; document.getElementById('seed-value').value='';
-    showToast("Зашифровано!", "🛡"); renderVault();
-}
-
-function renderVault() {
-    const list = document.getElementById('passwords-list'); list.innerHTML = "";
-    const arr = JSON.parse(CryptoJS.AES.decrypt(vaultData, currentMasterKey).toString(CryptoJS.enc.Utf8));
-    arr.forEach(p => {
-        const isSeed = p.type === 'seed';
-        list.innerHTML += `
-        <div class="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 flex flex-col gap-1 text-xs shadow-sm">
-            <div class="flex justify-between items-start">
-                <div>
-                    <span class="text-[10px] font-bold px-1.5 py-0.5 bg-zinc-200 dark:bg-zinc-800 rounded text-zinc-500">${isSeed ? 'Seed' : 'Pass'}</span>
-                    <span class="font-bold text-zinc-900 dark:text-zinc-100 ml-1">${escapeHTML(p.title)}</span>
-                    ${p.login ? `<div class="text-[10px] text-zinc-500 mt-1">${escapeHTML(p.login)}</div>` : ''}
-                </div>
-                <button onclick="navigator.clipboard.writeText('${p.val}')" class="text-cyan-500 hover:text-cyan-600 bg-cyan-500/10 px-2 py-1 rounded">Копировать</button>
-            </div>
-            ${isSeed ? 
-                `<textarea readonly class="w-full bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 mt-2 p-2 rounded-lg border border-zinc-200 dark:border-zinc-800 h-16 resize-none outline-none font-mono text-[10px]">${p.val}</textarea>` 
-                : 
-                `<input type="password" id="h-${p.id}" value="${p.val}" readonly onclick="toggleFieldType('h-${p.id}')" class="w-full bg-transparent text-cyan-500 font-mono mt-1 outline-none">`
-            }
-            <button onclick="deleteVaultEntry(${p.id})" class="text-red-400 self-end mt-1 px-1">Удалить</button>
-        </div>`;
-    });
-}
-function deleteVaultEntry(id) {
-    if(!confirm("Удалить?")) return;
-    let arr = JSON.parse(CryptoJS.AES.decrypt(vaultData, currentMasterKey).toString(CryptoJS.enc.Utf8));
-    arr = arr.filter(x => x.id !== id);
-    vaultData = CryptoJS.AES.encrypt(JSON.stringify(arr), currentMasterKey).toString(); localStorage.setItem('mv_vault', vaultData); renderVault();
-}
-
-// ==================== ИГРА 3-В-РЯД ====================
+// ==================== ИГРОВОЙ ДВИЖОК 3-В-РЯД (С БОМБАМИ) ====================
 const gameGrid = document.getElementById('game-board');
-const width = 8; const squares = []; let gameScore = 0; let gameLevel = 1;
-const candyColors = ['🔴', '🟡', '🟢', '🔵', '🟣', '💎'];
-let selectedCandyId = null;
+const w = 8; const sq = []; let gScore = 0; let gLevel = 1;
+const colors = ['🔴', '🟡', '🟢', '🔵', '🟣']; // Обычные элементы
+const BOMB = '💣';
+let selId = null; let isAnimating = false;
 
 function initGame() {
-    for (let i = 0; i < width * width; i++) {
-        const square = document.createElement('div');
-        square.classList.add('candy'); square.setAttribute('id', 'g-'+i);
-        square.innerHTML = candyColors[Math.floor(Math.random() * candyColors.length)];
-        square.addEventListener('click', handleCandyClick);
-        gameGrid.appendChild(square); squares.push(square);
+    gameGrid.innerHTML = ''; sq.length = 0; gScore = 0; gLevel = 1; document.getElementById('game-score').textContent = 0; document.getElementById('game-level').textContent = 1;
+    for (let i = 0; i < w * w; i++) {
+        const d = document.createElement('div'); d.classList.add('candy'); d.setAttribute('id', i);
+        d.innerHTML = colors[Math.floor(Math.random() * colors.length)];
+        d.addEventListener('click', handleCandyClick);
+        gameGrid.appendChild(d); sq.push(d);
     }
-    // Авточистка стартовых совпадений
-    let hasMatches = true;
-    while(hasMatches) { hasMatches = checkMatchesSilent(); }
+    // Чистим стартовое поле без начисления очков
+    let hasMatches = true; while(hasMatches) { hasMatches = checkAndClearSilent(); }
+}
+
+// Тихая проверка для генерации нормального поля в начале
+function checkAndClearSilent() {
+    let matched = false;
+    for(let i=0; i<64; i++) {
+        if(i%w < 6 && sq[i].innerHTML !== BOMB) {
+            let color = sq[i].innerHTML;
+            if(color && sq[i+1].innerHTML===color && sq[i+2].innerHTML===color) {
+                [i,i+1,i+2].forEach(x => sq[x].innerHTML = colors[Math.floor(Math.random()*colors.length)]); matched = true;
+            }
+        }
+        if(i < 48 && sq[i].innerHTML !== BOMB) {
+            let color = sq[i].innerHTML;
+            if(color && sq[i+w].innerHTML===color && sq[i+w*2].innerHTML===color) {
+                [i,i+w,i+w*2].forEach(x => sq[x].innerHTML = colors[Math.floor(Math.random()*colors.length)]); matched = true;
+            }
+        }
+    }
+    return matched;
 }
 
 function handleCandyClick() {
-    let id = parseInt(this.id.replace('g-',''));
-    if (selectedCandyId === null) {
-        selectedCandyId = id; this.classList.add('selected');
+    if (isAnimating) return;
+    let id = parseInt(this.id);
+    
+    // Мгновенный взрыв по клику на бомбу
+    if (sq[id].innerHTML === BOMB) {
+        explodeBomb(id); return;
+    }
+
+    if (selId === null) {
+        selId = id; this.classList.add('selected');
     } else {
-        squares[selectedCandyId].classList.remove('selected');
-        let validMoves = [selectedCandyId - 1, selectedCandyId - width, selectedCandyId + 1, selectedCandyId + width];
-        let isRightEdge = selectedCandyId % width === width - 1;
-        let isLeftEdge = selectedCandyId % width === 0;
-        if (isRightEdge && id === selectedCandyId + 1) validMoves = [];
-        if (isLeftEdge && id === selectedCandyId - 1) validMoves = [];
+        sq[selId].classList.remove('selected');
+        let valid = [selId-1, selId-w, selId+1, selId+w];
+        if (selId % w === w-1 && id === selId+1) valid = [];
+        if (selId % w === 0 && id === selId-1) valid = [];
 
-        if (validMoves.includes(id)) {
-            // Swap
-            let colorA = this.innerHTML; let colorB = squares[selectedCandyId].innerHTML;
-            this.innerHTML = colorB; squares[selectedCandyId].innerHTML = colorA;
-            
-            // Check match
-            let isMatch = checkMatches();
-            if (!isMatch) { setTimeout(() => { this.innerHTML = colorA; squares[selectedCandyId].innerHTML = colorB; }, 200); }
-        }
-        selectedCandyId = null;
-    }
-}
-
-function checkMatchesSilent() {
-    let matched = false;
-    for (let i = 0; i < 64; i++) {
-        // Row
-        if (i % width < 6) {
-            let row = [i, i+1, i+2]; let color = squares[i].innerHTML;
-            if (color && row.every(idx => squares[idx].innerHTML === color)) {
-                row.forEach(idx => squares[idx].innerHTML = candyColors[Math.floor(Math.random()*candyColors.length)]);
-                matched = true;
+        if (valid.includes(id)) {
+            // Если свапаем с бомбой -> Взрыв бомбы на новой позиции
+            if (sq[id].innerHTML === BOMB) {
+                sq[id].innerHTML = sq[selId].innerHTML; sq[selId].innerHTML = BOMB; explodeBomb(selId); selId = null; return;
             }
-        }
-        // Col
-        if (i < 48) {
-            let col = [i, i+width, i+width*2]; let color = squares[i].innerHTML;
-            if (color && col.every(idx => squares[idx].innerHTML === color)) {
-                col.forEach(idx => squares[idx].innerHTML = candyColors[Math.floor(Math.random()*candyColors.length)]);
-                matched = true;
+            if (sq[selId].innerHTML === BOMB) {
+                sq[selId].innerHTML = sq[id].innerHTML; sq[id].innerHTML = BOMB; explodeBomb(id); selId = null; return;
             }
-        }
-    }
-    return matched;
-}
 
-function checkMatches() {
-    let matched = false;
-    for (let i = 0; i < 64; i++) {
-        if (i % width < 6) {
-            let row = [i, i+1, i+2]; let color = squares[i].innerHTML;
-            if (color !== '' && row.every(idx => squares[idx].innerHTML === color)) {
-                gameScore += 3; row.forEach(idx => squares[idx].innerHTML = ''); matched = true;
-            }
-        }
-        if (i < 48) {
-            let col = [i, i+width, i+width*2]; let color = squares[i].innerHTML;
-            if (color !== '' && col.every(idx => squares[idx].innerHTML === color)) {
-                gameScore += 3; col.forEach(idx => squares[idx].innerHTML = ''); matched = true;
-            }
-        }
-    }
-    if (matched) {
-        document.getElementById('game-score').textContent = gameScore;
-        if (gameScore > gameLevel * 50) { gameLevel++; document.getElementById('game-level').textContent = gameLevel; }
-        setTimeout(moveDown, 150);
-    }
-    return matched;
-}
-
-function moveDown() {
-    for (let i = 0; i < 56; i++) {
-        if (squares[i + width].innerHTML === '') {
-            squares[i + width].innerHTML = squares[i].innerHTML;
-            squares[i].innerHTML = '';
-        }
-    }
-    for (let i = 0; i < width; i++) {
-        if (squares[i].innerHTML === '') squares[i].innerHTML = candyColors[Math.floor(Math.random() * candyColors.length)];
-    }
-    setTimeout(() => { if(checkMatches()) moveDown(); }, 150);
-}
-
-// ==================== НАСТРОЙКИ & UI ====================
-function switchTab(tab) {
-    activeTab = tab;
-    ['notes', 'crypto', 'game', 'settings'].forEach(t => document.getElementById(`section-${t}`).classList.toggle('hidden', t !== tab));
-    
-    // Обновляем цвета иконок в таббаре
-    ['notes', 'crypto', 'game', 'settings'].forEach(t => {
-        const btn = document.getElementById(`nav-${t}`);
-        const icon = btn.querySelector('.nav-icon');
-        const text = btn.querySelector('span');
-        if (t === tab) {
-            btn.classList.add(t==='notes'?'text-accent':(t==='crypto'?'text-crypto':(t==='game'?'text-amber-500':'text-zinc-900')));
-            if(t==='settings') btn.classList.add('dark:text-white');
-            btn.classList.remove('text-zinc-400', 'dark:text-zinc-500');
-        } else {
-            btn.className = "nav-btn flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all text-zinc-400 dark:text-zinc-500";
-        }
-    });
-}
-
-function toggleTheme() {
-    const html = document.documentElement; const isDark = html.classList.contains('dark');
-    html.classList.toggle('dark', !isDark); html.classList.toggle('light', isDark);
-    localStorage.setItem('mv_theme', isDark ? 'light' : 'dark');
-    document.getElementById('theme-toggle-btn').textContent = isDark ? '🌙 Тёмная' : '☀️ Светлая';
-}
-
-function setAccentColor(primary, hover, btn) {
-    document.documentElement.style.setProperty('--color-accent', primary);
-    document.documentElement.style.setProperty('--color-accent-hover', hover);
-    localStorage.setItem('mv_accent', JSON.stringify({primary, hover}));
-    document.querySelectorAll('[data-color-btn]').forEach(b => {
-        b.style.borderColor = 'transparent'; b.style.transform = ''; b.classList.remove('ring-4');
-    });
-    if (btn) { btn.style.borderColor = '#fff'; btn.classList.add('ring-4'); btn.style.transform = 'scale(1.1)'; }
-    
-    const activeFilter = document.querySelector('.note-tab-btn.tab-active');
-    if (activeFilter) activeFilter.style.backgroundColor = primary;
-}
-
-function loadSettings() {
-    try {
-        const saved = JSON.parse(localStorage.getItem('mv_accent'));
-        if (saved?.primary) {
-            document.documentElement.style.setProperty('--color-accent', saved.primary);
-            document.documentElement.style.setProperty('--color-accent-hover', saved.hover);
+            // Обычный свап
+            swap(id, selId);
+            isAnimating = true;
             setTimeout(() => {
-                const btn = Array.from(document.querySelectorAll('[data-color-btn]')).find(b => b.getAttribute('onclick').includes(saved.primary));
-                if(btn) { btn.style.borderColor = '#fff'; btn.classList.add('ring-4'); btn.style.transform = 'scale(1.1)'; }
-            }, 100);
+                if(!processMatches()) { swap(id, selId); isAnimating = false; } // Возврат если нет матча
+            }, 200);
         }
-    } catch {}
-    if (localStorage.getItem('mv_theme') === 'light') {
-        document.documentElement.classList.remove('dark'); document.documentElement.classList.add('light');
-        document.getElementById('theme-toggle-btn').textContent = '🌙 Тёмная';
+        selId = null;
     }
 }
 
-function exportData() {
-    const data = { notes, vault: localStorage.getItem('mv_vault') };
-    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `backup.json`; a.click();
-}
-function importData(input) {
-    const f = input.files[0]; if (!f) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-        try {
-            const data = JSON.parse(e.target.result); notes = data.notes || []; localStorage.setItem('mv_notes', JSON.stringify(notes));
-            if(data.vault) localStorage.setItem('mv_vault', data.vault);
-            renderNotes(); showToast("Восстановлено!", "✅");
-        } catch { showToast("Ошибка файла", "❌"); }
-    }; reader.readAsText(f);
+function swap(i, j) { let tmp = sq[i].innerHTML; sq[i].innerHTML = sq[j].innerHTML; sq[j].innerHTML = tmp; }
+
+function explodeBomb(idx) {
+    isAnimating = true;
+    let r = Math.floor(idx/w), c = idx%w;
+    let toDestroy = new Set();
+    
+    // Зона поражения 3х3
+    for(let dr=-1; dr<=1; dr++){
+        for(let dc=-1; dc<=1; dc++){
+            let nr=r+dr, nc=c+dc;
+            if(nr>=0 && nr<w && nc>=0 && nc<w) toDestroy.add(nr*w+nc);
+        }
+    }
+    
+    // Анимация взрыва
+    toDestroy.forEach(i => {
+        sq[i].classList.add('bomb-anim');
+        setTimeout(() => sq[i].classList.add('popping'), 150);
+    });
+
+    setTimeout(() => {
+        let chainReact = [];
+        toDestroy.forEach(i => {
+            sq[i].classList.remove('bomb-anim', 'popping');
+            if(i !== idx && sq[i].innerHTML === BOMB) chainReact.push(i);
+            sq[i].innerHTML = '';
+            gScore += 2;
+        });
+        updateScore();
+        if(chainReact.length > 0) { chainReact.forEach(i => explodeBomb(i)); } // Цепная реакция
+        else { applyGravity(); }
+    }, 350);
 }
 
-let toastTimer;
-function showToast(msg, icon='') {
-    const t = document.getElementById('toast'); document.getElementById('toast-icon').textContent = icon; document.getElementById('toast-text').textContent = msg;
-    t.classList.remove('hidden', 'toast-hide'); t.classList.add('toast-show');
-    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.classList.replace('toast-show', 'toast-hide'); setTimeout(() => t.classList.add('hidden'), 250); }, 2800);
+function processMatches() {
+    let toClear = new Set();
+    let bombsToSpawn = new Map(); // key: index, value: true
+    let matched = false;
+
+    // Горизонталь
+    for (let r=0; r<w; r++) {
+        for (let c=0; c<w-2; c++) {
+            let i = r*w+c; let color = sq[i].innerHTML;
+            if (color && color !== BOMB) {
+                let matchLen = 1;
+                while (c+matchLen < w && sq[i+matchLen].innerHTML === color) matchLen++;
+                if (matchLen >= 3) {
+                    matched = true;
+                    for (let k=0; k<matchLen; k++) toClear.add(i+k);
+                    if (matchLen >= 4) bombsToSpawn.set(i + 1, true); // Спавн бомбы
+                    c += matchLen - 1;
+                }
+            }
+        }
+    }
+    // Вертикаль
+    for (let c=0; c<w; c++) {
+        for (let r=0; r<w-2; r++) {
+            let i = r*w+c; let color = sq[i].innerHTML;
+            if (color && color !== BOMB) {
+                let matchLen = 1;
+                while (r+matchLen < w && sq[i+matchLen*w].innerHTML === color) matchLen++;
+                if (matchLen >= 3) {
+                    matched = true;
+                    for (let k=0; k<matchLen; k++) toClear.add(i+k*w);
+                    if (matchLen >= 4) bombsToSpawn.set(i + w, true); // Спавн бомбы
+                    r += matchLen - 1;
+                }
+            }
+        }
+    }
+
+    if (matched) {
+        toClear.forEach(i => sq[i].classList.add('popping'));
+        setTimeout(() => {
+            toClear.forEach(i => {
+                sq[i].classList.remove('popping');
+                if(bombsToSpawn.has(i)) { sq[i].innerHTML = BOMB; gScore += 10; } 
+                else { sq[i].innerHTML = ''; gScore += 3; }
+            });
+            updateScore();
+            applyGravity();
+        }, 200);
+    }
+    return matched;
 }
+
+function applyGravity() {
+    let moved = false;
+    // Сдвиг вниз
+    for (let c=0; c<w; c++) {
+        let emptySpots = 0;
+        for (let r=w-1; r>=0; r--) {
+            let i = r*w+c;
+            if (sq[i].innerHTML === '') { emptySpots++; } 
+            else if (emptySpots > 0) {
+                sq[i+emptySpots*w].innerHTML = sq[i].innerHTML;
+                sq[i+emptySpots*w].classList.add('falling');
+                sq[i].innerHTML = '';
+                moved = true;
+            }
+        }
+        // Новые сверху
+        for(let r=0; r<emptySpots; r++) {
+            sq[r*w+c].innerHTML = colors[Math.floor(Math.random()*colors.length)];
+            sq[r*w+c].classList.add('falling');
+            moved = true;
+        }
+    }
+    
+    setTimeout(() => {
+        sq.forEach(s => s.classList.remove('falling'));
+        if (!processMatches()) isAnimating = false; // Цикл окончен, если новых совпадений нет
+    }, 350);
+}
+
+function updateScore() {
+    document.getElementById('game-score').textContent = gScore;
+    if (gScore > gLevel * 100) { gLevel++; document.getElementById('game-level').textContent = gLevel; showToast(`Уровень ${gLevel}! 🎉`, '🏆'); }
+}
+
+// ==================== НАСТРОЙКИ UI ====================
+function toggleTheme() { const h = document.documentElement; const isD = h.classList.contains('dark'); h.classList.toggle('dark', !isD); h.classList.toggle('light', isD); localStorage.setItem('mv_theme', isD ? 'light' : 'dark'); document.getElementById('theme-toggle-btn').textContent = isD ? '🌙 Тёмная' : '☀️ Светлая'; }
+function setAccentColor(p, h, el) { document.documentElement.style.setProperty('--color-accent', p); document.documentElement.style.setProperty('--color-accent-hover', h); localStorage.setItem('mv_accent', JSON.stringify({primary:p, hover:h})); document.querySelectorAll('[data-color-btn]').forEach(b => { b.style.borderColor = 'transparent'; b.style.transform = ''; b.classList.remove('ring-4'); }); if (el) { el.style.borderColor = '#fff'; el.classList.add('ring-4'); el.style.transform = 'scale(1.1)'; } const a = document.querySelector('.note-tab-btn.tab-active'); if (a) a.style.backgroundColor = p; }
+function loadSettings() { try { const s = JSON.parse(localStorage.getItem('mv_accent')); if(s?.primary){ document.documentElement.style.setProperty('--color-accent', s.primary); document.documentElement.style.setProperty('--color-accent-hover', s.hover); setTimeout(() => { const btn = Array.from(document.querySelectorAll('[data-color-btn]')).find(b => b.getAttribute('onclick').includes(s.primary)); if(btn) { btn.style.borderColor = '#fff'; btn.classList.add('ring-4'); btn.style.transform = 'scale(1.1)'; } }, 100); } } catch {} if (localStorage.getItem('mv_theme') === 'light') { document.documentElement.classList.remove('dark'); document.documentElement.classList.add('light'); document.getElementById('theme-toggle-btn').textContent = '🌙 Тёмная'; } }
+
+function switchTab(t) { activeTab = t; ['notes', 'crypto', 'game', 'settings'].forEach(x => document.getElementById(`section-${x}`).classList.toggle('hidden', x !== t)); ['notes', 'crypto', 'game', 'settings'].forEach(x => { const b = document.getElementById(`nav-${x}`); if(x===t){ b.classList.add(t==='notes'?'text-accent':(t==='crypto'?'text-crypto':(t==='game'?'text-amber-500':'text-zinc-900'))); if(t==='settings') b.classList.add('dark:text-white'); b.classList.remove('text-zinc-400', 'dark:text-zinc-500'); } else b.className = "nav-btn flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all text-zinc-400 dark:text-zinc-500"; }); }
+
+function exportData() { const d = { notes, vault: localStorage.getItem('mv_vault') }; const b = new Blob([JSON.stringify(d)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `backup.json`; a.click(); }
+function importData(inp) { const f = input.files[0]; if (!f) return; const r = new FileReader(); r.onload = e => { try { const d = JSON.parse(e.target.result); notes = d.notes || []; localStorage.setItem('mv_notes', JSON.stringify(notes)); if(d.vault) localStorage.setItem('mv_vault', d.vault); renderNotes(); showToast("Восстановлено!", "✅"); } catch { showToast("Ошибка файла", "❌"); } }; r.readAsText(f); }
+
+let toastTimer; function showToast(m, ic='') { const t = document.getElementById('toast'); document.getElementById('toast-icon').textContent = ic; document.getElementById('toast-text').textContent = m; t.classList.remove('hidden', 'toast-hide'); t.classList.add('toast-show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.classList.replace('toast-show', 'toast-hide'); setTimeout(() => t.classList.add('hidden'), 250); }, 2800); }
 </script>
 </body>
 </html>
