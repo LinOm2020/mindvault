@@ -24,314 +24,233 @@
         }
     </script>
     <style>
-        :root {
-            --color-accent: #f43f5e;
-            --color-accent-hover: #e11d48;
-        }
+        :root { --color-accent: #f43f5e; --color-accent-hover: #e11d48; }
         * { box-sizing: border-box; }
         body {
-            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Plus Jakarta Sans', sans-serif;
             -webkit-tap-highlight-color: transparent;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
+            transition: background-color 0.15s, color 0.15s;
         }
-        /* iOS momentum scroll для списков */
         .custom-scroll { -webkit-overflow-scrolling: touch; }
-        /* Минимальный тач-таргет 44px по Apple HIG и Material */
         .nav-btn { min-height: 44px; min-width: 60px; justify-content: center; }
-        /* Убрать синее выделение на Android Chrome */
         * { -webkit-tap-highlight-color: rgba(0,0,0,0); }
-        /* Safe area для устройств с вырезами */
-        .nav-safe {
-            padding-bottom: max(0.625rem, env(safe-area-inset-bottom));
-        }
-        .main-safe {
-            padding-bottom: max(5.5rem, calc(4.5rem + env(safe-area-inset-bottom)));
-        }
-        /* Скроллбар */
+        .nav-safe { padding-bottom: max(0.625rem, env(safe-area-inset-bottom)); }
+        .main-safe { padding-bottom: max(5.5rem, calc(4.5rem + env(safe-area-inset-bottom))); }
         .custom-scroll::-webkit-scrollbar { width: 3px; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        /* Анимация тоста */
         @keyframes toast-in { from { opacity: 0; transform: translate(-50%, -12px); } to { opacity: 1; transform: translate(-50%, 0); } }
         @keyframes toast-out { from { opacity: 1; transform: translate(-50%, 0); } to { opacity: 0; transform: translate(-50%, -12px); } }
         .toast-show { animation: toast-in 0.25s ease forwards; }
         .toast-hide { animation: toast-out 0.25s ease forwards; }
-        /* Акцентные элементы */
         .tab-active { background-color: var(--color-accent) !important; color: white !important; }
-        .nav-icon-active { color: var(--color-accent); }
-        /* Переходы темы */
-        body, .bg-white, .dark\:bg-zinc-900, .dark\:bg-zinc-950 { transition: background-color 0.15s, color 0.15s; }
-        /* Фокус */
         textarea:focus, input:focus { outline: none; border-color: var(--color-accent) !important; }
-        /* Светлая тема */
         html.light body { background-color: #f4f4f5; color: #18181b; }
+        
+        /* Game Styles */
+        .game-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 2px;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            background-color: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            padding: 4px;
+        }
+        .candy {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(1.2rem, 6vw, 2rem);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.05);
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        html.light .candy { background: rgba(0,0,0,0.05); }
+        .candy.selected { transform: scale(1.15); z-index: 10; background: var(--color-accent); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .candy:active { transform: scale(0.9); }
     </style>
 </head>
 <body class="bg-zinc-950 text-zinc-100 min-h-screen flex flex-col dark">
 
-    <!-- Toast -->
-    <div id="toast" role="alert" aria-live="polite"
-        class="fixed top-5 left-1/2 -translate-x-1/2 bg-zinc-800 border border-zinc-700 text-sm px-4 py-3 rounded-xl shadow-2xl z-50 pointer-events-none text-white flex items-center gap-2 hidden max-w-[calc(100vw-2rem)]">
-        <span id="toast-icon"></span>
-        <span id="toast-text"></span>
+    <div id="toast" role="alert" class="fixed top-5 left-1/2 -translate-x-1/2 bg-zinc-800 border border-zinc-700 text-sm px-4 py-3 rounded-xl shadow-2xl z-50 pointer-events-none text-white flex items-center gap-2 hidden max-w-[calc(100vw-2rem)]">
+        <span id="toast-icon"></span><span id="toast-text"></span>
     </div>
 
-    <!-- Модальное фото -->
-    <div id="photo-modal" onclick="closePhotoModal()"
-        class="fixed inset-0 bg-black/92 z-50 hidden items-center justify-center p-4">
-        <img id="modal-img" src="" alt="Просмотр вложения" class="max-w-full max-h-full rounded-xl object-contain shadow-2xl">
-        <button onclick="closePhotoModal()" aria-label="Закрыть"
-            class="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white text-lg">✕</button>
+    <div id="photo-modal" onclick="closePhotoModal()" class="fixed inset-0 bg-black/92 z-50 hidden items-center justify-center p-4">
+        <img id="modal-img" src="" class="max-w-full max-h-full rounded-xl object-contain shadow-2xl">
+        <button class="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white text-lg">✕</button>
     </div>
 
     <main id="main" class="w-full max-w-md mx-auto px-4 pt-6 flex-1 flex flex-col gap-4 main-safe">
 
-        <!-- Шапка -->
         <header class="flex items-center justify-between">
             <div>
-                <h1 class="text-2xl font-bold tracking-tight text-white">MindVault <span style="color:var(--color-accent)">Pro</span></h1>
-                <p class="text-[11px] text-zinc-500 mt-0.5" id="sw-status-text">Загрузка...</p>
+                <h1 class="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">MindVault <span style="color:var(--color-accent)">Pro</span></h1>
+                <p class="text-[11px] text-zinc-500 mt-0.5" id="sw-status-text">Загрузка модулей...</p>
             </div>
             <div class="flex items-center gap-2">
-                <span id="lock-timer-badge" class="hidden text-[10px] font-bold px-2 py-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20"></span>
-                <span id="sw-badge" class="text-[10px] font-bold px-2 py-1 rounded-md bg-zinc-800 text-zinc-500 border border-zinc-700">Push: —</span>
+                <span id="lock-timer-badge" class="hidden text-[10px] font-bold px-2 py-1 rounded-md bg-amber-500/10 text-amber-500 border border-amber-500/20"></span>
+                <span id="sw-badge" class="text-[10px] font-bold px-2 py-1 rounded-md bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-500 border border-zinc-300 dark:border-zinc-700">Push: —</span>
             </div>
         </header>
 
-        <!-- Секция: Заметки -->
         <section id="section-notes" class="flex flex-col gap-4">
-
             <div id="edit-indicator" class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-center justify-between hidden">
-                <span class="text-xs font-semibold text-amber-400">✏️ Режим редактирования</span>
-                <button onclick="cancelEdit()" class="text-[11px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 px-2.5 py-1 rounded-lg transition-colors">Отмена</button>
+                <span class="text-xs font-semibold text-amber-500">✏️ Режим редактирования</span>
+                <button onclick="cancelEdit()" class="text-[11px] bg-amber-500/20 text-amber-500 px-2.5 py-1 rounded-lg">Отмена</button>
             </div>
 
-            <!-- Фильтры -->
-            <div class="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs" role="tablist">
-                <button role="tab" onclick="filterNotes('all', this)" data-tab-btn
-                    class="note-tab-btn tab-active px-3 py-1.5 rounded-lg font-semibold whitespace-nowrap transition-all">Все</button>
-                <button role="tab" onclick="filterNotes('💡 Мысли', this)" data-tab-btn
-                    class="note-tab-btn px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-400 font-semibold whitespace-nowrap transition-all hover:bg-zinc-700">💡 Мысли</button>
-                <button role="tab" onclick="filterNotes('📅 Задачи', this)" data-tab-btn
-                    class="note-tab-btn px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-400 font-semibold whitespace-nowrap transition-all hover:bg-zinc-700">📅 Задачи</button>
-                <button role="tab" onclick="filterNotes('💼 Работа', this)" data-tab-btn
-                    class="note-tab-btn px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-400 font-semibold whitespace-nowrap transition-all hover:bg-zinc-700">💼 Работа</button>
-                <button role="tab" onclick="filterNotes('🛒 Покупки', this)" data-tab-btn
-                    class="note-tab-btn px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-400 font-semibold whitespace-nowrap transition-all hover:bg-zinc-700">🛒 Покупки</button>
+            <div class="flex gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs" id="filter-tabs">
+                <button onclick="filterNotes('all', this)" class="note-tab-btn tab-active px-3 py-1.5 rounded-lg font-semibold whitespace-nowrap transition-all border border-transparent">Все</button>
+                <button onclick="filterNotes('💡 Мысли', this)" class="note-tab-btn px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-semibold whitespace-nowrap transition-all border border-zinc-200 dark:border-zinc-700">💡 Мысли</button>
+                <button onclick="filterNotes('📅 Задачи', this)" class="note-tab-btn px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-semibold whitespace-nowrap transition-all border border-zinc-200 dark:border-zinc-700">📅 Задачи</button>
+                <button onclick="filterNotes('💼 Работа', this)" class="note-tab-btn px-3 py-1.5 rounded-lg bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-semibold whitespace-nowrap transition-all border border-zinc-200 dark:border-zinc-700">💼 Работа</button>
             </div>
 
-            <!-- Форма заметки -->
-            <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-xl">
-                <textarea id="note-input"
-                    class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-sm text-zinc-100 placeholder-zinc-600 h-24 resize-none transition-colors"
-                    placeholder="Напишите мысль... (напр: в субботу в 15:00 встреча)" maxlength="2000"></textarea>
-
-                <div id="char-counter" class="text-right text-[10px] text-zinc-600 mt-1 -mb-1">0 / 2000</div>
-
-                <!-- Превью изображения -->
-                <div id="image-preview-container" class="hidden relative mt-2 w-20 h-20 border border-zinc-700 rounded-xl overflow-hidden flex-shrink-0">
-                    <img id="image-preview" alt="Вложение" class="w-full h-full object-cover">
-                    <button onclick="clearAttachedImage()" aria-label="Удалить фото"
-                        class="absolute top-0 right-0 bg-black/70 text-white rounded-bl-xl w-6 h-6 flex items-center justify-center text-[10px]">✕</button>
+            <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xl">
+                <textarea id="note-input" class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 h-24 resize-none transition-colors" placeholder="Заметка, #тег или **жирный** текст..."></textarea>
+                <div id="image-preview-container" class="hidden relative mt-2 w-20 h-20 border border-zinc-200 dark:border-zinc-700 rounded-xl overflow-hidden flex-shrink-0">
+                    <img id="image-preview" class="w-full h-full object-cover">
+                    <button onclick="clearAttachedImage()" class="absolute top-0 right-0 bg-black/70 text-white rounded-bl-xl w-6 h-6 flex items-center justify-center text-[10px]">✕</button>
                 </div>
-
                 <div class="flex items-center justify-between mt-3 gap-2">
-                    <label class="cursor-pointer flex items-center gap-1.5 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 rounded-xl text-xs font-semibold text-zinc-300 transition-colors select-none">
+                    <label class="cursor-pointer flex items-center gap-1.5 px-3 py-2 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 border border-zinc-300 dark:border-zinc-700 rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-300 transition-colors">
                         📷 Фото
                         <input type="file" id="note-image-input" accept="image/*" class="hidden" onchange="previewImage(this)">
                     </label>
-                    <button onclick="saveNote()" id="btn-save-note"
-                        class="px-5 py-2 rounded-xl text-xs font-bold text-white shadow-md transition-all active:scale-95"
-                        style="background-color:var(--color-accent)">Сохранить</button>
+                    <button onclick="saveNote()" id="btn-save-note" class="px-5 py-2 rounded-xl text-xs font-bold text-white shadow-md active:scale-95 transition-transform" style="background-color:var(--color-accent)">Сохранить</button>
                 </div>
             </div>
 
-            <!-- Список заметок -->
             <div id="notes-list" class="flex flex-col gap-3 overflow-y-auto custom-scroll" style="max-height:44vh"></div>
         </section>
 
-        <!-- Секция: Сейф -->
         <section id="section-crypto" class="flex flex-col gap-4 hidden">
-
-            <!-- Попытки входа -->
-            <div id="vault-lockout-msg" class="hidden bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-center">
-                <p class="text-xs font-semibold text-red-400">🔒 Сейф заблокирован. Подождите <span id="lockout-countdown">30</span>с.</p>
-            </div>
-
-            <div id="crypto-auth" class="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 text-center shadow-xl">
-                <div class="w-12 h-12 rounded-full bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto mb-3">
+            <div id="crypto-auth" class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 text-center shadow-xl">
+                <div class="w-12 h-12 rounded-full bg-cyan-500/10 text-cyan-500 flex items-center justify-center mx-auto mb-3">
                     <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 </div>
-                <h3 class="text-sm font-bold text-white mb-1">Зашифрованный Сейф</h3>
-                <p class="text-[11px] text-zinc-500 mb-4">AES-256 + PBKDF2 · <span id="vault-attempts-left">5</span> попыток</p>
-                <input type="password" id="master-password" autocomplete="current-password"
-                    class="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-center text-sm tracking-widest text-zinc-100 placeholder-zinc-600 mb-3 transition-colors"
-                    placeholder="Мастер-пароль" onkeydown="if(event.key==='Enter')unlockVault()">
-                <button onclick="unlockVault()" id="btn-unlock"
-                    class="w-full py-2.5 bg-cyan-500 hover:bg-cyan-600 rounded-xl text-xs font-bold text-white shadow-lg transition-colors">Открыть сейф</button>
+                <h3 class="text-sm font-bold text-zinc-900 dark:text-white mb-1">Секретный Сейф</h3>
+                <p class="text-[11px] text-zinc-500 mb-4">Локальное шифрование AES-256</p>
+                <input type="password" id="master-password" class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 text-center text-sm tracking-widest text-zinc-900 dark:text-100 placeholder-zinc-400 dark:placeholder-zinc-600 mb-3" placeholder="Мастер-пароль" onkeydown="if(event.key==='Enter')unlockVault()">
+                <button onclick="unlockVault()" id="btn-unlock" class="w-full py-2.5 bg-cyan-500 hover:bg-cyan-600 rounded-xl text-xs font-bold text-white shadow-lg">Открыть сейф</button>
             </div>
 
             <div id="crypto-content" class="flex flex-col gap-4 hidden">
-                <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-xl">
-                    <div class="grid grid-cols-2 gap-2 mb-2">
-                        <input type="text" id="pw-title" autocomplete="off"
-                            class="bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-xs text-zinc-100 placeholder-zinc-600 transition-colors"
-                            placeholder="Ресурс">
-                        <input type="text" id="pw-login" autocomplete="off"
-                            class="bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-xs text-zinc-100 placeholder-zinc-600 transition-colors"
-                            placeholder="Логин">
+                <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xl">
+                    
+                    <div class="flex gap-2 mb-3 text-xs bg-zinc-100 dark:bg-zinc-950 p-1 rounded-xl">
+                        <button onclick="setVaultType('pass')" id="vt-pass" class="flex-1 py-1.5 rounded-lg bg-white dark:bg-zinc-800 shadow text-zinc-900 dark:text-white font-semibold transition-all">Пароль</button>
+                        <button onclick="setVaultType('seed')" id="vt-seed" class="flex-1 py-1.5 rounded-lg text-zinc-500 dark:text-zinc-500 font-semibold transition-all">Seed-фраза</button>
                     </div>
-                    <div class="relative mb-3 flex gap-1.5">
-                        <div class="relative flex-1">
-                            <input type="password" id="pw-value" autocomplete="new-password"
-                                class="w-full bg-zinc-950 border border-zinc-800 rounded-xl pl-3 pr-9 py-2.5 text-xs text-zinc-100 transition-colors"
-                                placeholder="Пароль">
-                            <button onclick="toggleFieldType('pw-value')" aria-label="Показать/скрыть пароль"
-                                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 text-sm">👁</button>
+
+                    <div id="form-pass">
+                        <div class="grid grid-cols-2 gap-2 mb-2">
+                            <input type="text" id="pw-title" class="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600" placeholder="Ресурс">
+                            <input type="text" id="pw-login" class="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600" placeholder="Логин">
                         </div>
-                        <button onclick="generateSecurePassword()" title="Сгенерировать пароль"
-                            class="px-2.5 bg-zinc-800 border border-zinc-700 rounded-xl text-xs hover:text-cyan-400 transition-colors">⚡</button>
-                        <button onclick="pasteFromClipboard()" title="Вставить из буфера"
-                            class="px-2.5 bg-zinc-800 border border-zinc-700 rounded-xl text-xs hover:text-cyan-400 transition-colors">📋</button>
+                        <div class="relative mb-3 flex gap-1.5">
+                            <div class="relative flex-1">
+                                <input type="password" id="pw-value" class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-3 pr-9 py-2.5 text-xs text-zinc-900 dark:text-zinc-100" placeholder="Пароль">
+                                <button onclick="toggleFieldType('pw-value')" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300">👁</button>
+                            </div>
+                            <button onclick="generateSecurePassword()" class="px-2.5 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl hover:text-cyan-500">⚡</button>
+                            <button onclick="pasteFromClipboard('pw-value')" class="px-2.5 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl hover:text-cyan-500">📋</button>
+                        </div>
                     </div>
-                    <!-- Индикатор силы пароля -->
-                    <div id="pw-strength-bar" class="flex gap-1 mb-3">
-                        <div class="h-1 rounded-full flex-1 bg-zinc-800" id="pws-1"></div>
-                        <div class="h-1 rounded-full flex-1 bg-zinc-800" id="pws-2"></div>
-                        <div class="h-1 rounded-full flex-1 bg-zinc-800" id="pws-3"></div>
-                        <div class="h-1 rounded-full flex-1 bg-zinc-800" id="pws-4"></div>
+
+                    <div id="form-seed" class="hidden">
+                        <input type="text" id="seed-title" class="w-full mb-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-2.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600" placeholder="Название кошелька (TrustWallet)">
+                        <div class="relative mb-3">
+                            <textarea id="seed-value" class="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 pr-10 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 h-20 resize-none font-mono" placeholder="введите 12 или 24 слова через пробел"></textarea>
+                            <button onclick="pasteFromClipboard('seed-value')" class="absolute right-2 top-2 p-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-lg hover:text-cyan-500 text-xs">📋</button>
+                        </div>
                     </div>
-                    <button onclick="savePassword()"
-                        class="w-full py-2 bg-cyan-500 hover:bg-cyan-600 rounded-xl text-xs font-bold text-white transition-colors">Зашифровать и сохранить</button>
+
+                    <button onclick="saveVaultEntry()" class="w-full py-2 bg-cyan-500 hover:bg-cyan-600 rounded-xl text-xs font-bold text-white transition-colors">Зашифровать и сохранить</button>
                 </div>
                 <div id="passwords-list" class="flex flex-col gap-2 overflow-y-auto custom-scroll" style="max-height:35vh"></div>
             </div>
         </section>
 
-        <!-- Секция: Настройки -->
-        <section id="section-settings" class="flex flex-col gap-4 hidden">
+        <section id="section-game" class="flex flex-col gap-4 hidden h-full justify-center pb-10">
+            <div class="flex items-center justify-between px-2 text-zinc-800 dark:text-white font-bold">
+                <div>Уровень <span id="game-level" class="text-accent text-lg">1</span></div>
+                <div>Счет: <span id="game-score" class="text-lg">0</span></div>
+            </div>
+            
+            <div class="game-grid shadow-2xl" id="game-board">
+                </div>
+            
+            <p class="text-center text-[10px] text-zinc-500 mt-2">Тапайте на соседние элементы, чтобы собрать 3 в ряд</p>
+        </section>
 
-            <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-xl flex flex-col gap-4">
-                <h3 class="text-sm font-bold border-b border-zinc-800 pb-2 text-white">Внешний вид</h3>
+        <section id="section-settings" class="flex flex-col gap-4 hidden">
+            <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xl flex flex-col gap-4">
+                <h3 class="text-sm font-bold border-b border-zinc-200 dark:border-zinc-800 pb-2 text-zinc-900 dark:text-white">Внешний вид</h3>
                 <div class="flex items-center justify-between text-xs">
-                    <span class="font-semibold text-zinc-300">Тема оформления</span>
-                    <button onclick="toggleTheme()" id="theme-toggle-btn"
-                        class="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-xl font-bold text-zinc-300 hover:bg-zinc-700 transition-colors text-xs">
-                        ☀️ Светлая
-                    </button>
+                    <span class="font-semibold text-zinc-700 dark:text-zinc-300">Тема оформления</span>
+                    <button onclick="toggleTheme()" id="theme-toggle-btn" class="px-3 py-2 bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-xl font-bold text-zinc-800 dark:text-zinc-300">☀️ Светлая</button>
                 </div>
                 <div class="flex flex-col gap-2">
-                    <span class="text-xs font-semibold text-zinc-300">Акцентный цвет</span>
+                    <span class="text-xs font-semibold text-zinc-700 dark:text-zinc-300">Акцентный цвет</span>
                     <div class="flex gap-3 mt-1">
-                        <button onclick="setAccentColor('#f43f5e','#e11d48',this)" data-color-btn
-                            class="w-9 h-9 rounded-full border-2 border-zinc-600 transition-all active:scale-90 shadow" style="background:#f43f5e" aria-label="Красный акцент"></button>
-                        <button onclick="setAccentColor('#3b82f6','#2563eb',this)" data-color-btn
-                            class="w-9 h-9 rounded-full border-2 border-zinc-600 transition-all active:scale-90 shadow" style="background:#3b82f6" aria-label="Синий акцент"></button>
-                        <button onclick="setAccentColor('#10b981','#059669',this)" data-color-btn
-                            class="w-9 h-9 rounded-full border-2 border-zinc-600 transition-all active:scale-90 shadow" style="background:#10b981" aria-label="Зелёный акцент"></button>
-                        <button onclick="setAccentColor('#a855f7','#9333ea',this)" data-color-btn
-                            class="w-9 h-9 rounded-full border-2 border-zinc-600 transition-all active:scale-90 shadow" style="background:#a855f7" aria-label="Фиолетовый акцент"></button>
-                        <button onclick="setAccentColor('#f97316','#ea580c',this)" data-color-btn
-                            class="w-9 h-9 rounded-full border-2 border-zinc-600 transition-all active:scale-90 shadow" style="background:#f97316" aria-label="Оранжевый акцент"></button>
+                        <button onclick="setAccentColor('#f43f5e','#e11d48',this)" data-color-btn class="w-9 h-9 rounded-full border-2 border-zinc-300 transition-all active:scale-90 shadow" style="background:#f43f5e"></button>
+                        <button onclick="setAccentColor('#3b82f6','#2563eb',this)" data-color-btn class="w-9 h-9 rounded-full border-2 border-zinc-300 transition-all active:scale-90 shadow" style="background:#3b82f6"></button>
+                        <button onclick="setAccentColor('#10b981','#059669',this)" data-color-btn class="w-9 h-9 rounded-full border-2 border-zinc-300 transition-all active:scale-90 shadow" style="background:#10b981"></button>
+                        <button onclick="setAccentColor('#a855f7','#9333ea',this)" data-color-btn class="w-9 h-9 rounded-full border-2 border-zinc-300 transition-all active:scale-90 shadow" style="background:#a855f7"></button>
+                        <button onclick="setAccentColor('#f97316','#ea580c',this)" data-color-btn class="w-9 h-9 rounded-full border-2 border-zinc-300 transition-all active:scale-90 shadow" style="background:#f97316"></button>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3">
-                <h3 class="text-sm font-bold border-b border-zinc-800 pb-2 text-white">Уведомления</h3>
-
-                <div class="flex items-center justify-between text-xs">
-                    <div>
-                        <p class="font-semibold text-zinc-300">Разрешение на Push</p>
-                        <p class="text-zinc-500 mt-0.5" id="notif-status-text">—</p>
-                    </div>
-                    <button onclick="requestNotificationPermission()"
-                        class="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-xl font-bold text-zinc-300 hover:bg-zinc-700 transition-colors text-xs">🔔 Запросить</button>
-                </div>
-
-                <div class="flex items-center justify-between text-xs">
-                    <div>
-                        <p class="font-semibold text-zinc-300">Тестовое уведомление</p>
-                        <p class="text-zinc-500 mt-0.5">Придёт через 5 секунд</p>
-                    </div>
-                    <button onclick="sendTestNotification()"
-                        class="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-xl font-bold text-zinc-300 hover:bg-zinc-700 transition-colors text-xs">🧪 Тест</button>
-                </div>
-
-                <div class="flex items-center justify-between text-xs">
-                    <div>
-                        <p class="font-semibold text-zinc-300">Service Worker</p>
-                        <p class="text-zinc-500 mt-0.5" id="sw-detail-status">—</p>
-                    </div>
-                    <button onclick="reregisterSW()"
-                        class="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-xl font-bold text-zinc-300 hover:bg-zinc-700 transition-colors text-xs">🔄 Переустановить</button>
-                </div>
-
-                <div class="flex items-center justify-between text-xs">
-                    <div>
-                        <p class="font-semibold text-zinc-300">Кэш браузера</p>
-                        <p class="text-zinc-500 mt-0.5">Сбросить и перезагрузить</p>
-                    </div>
-                    <button onclick="clearCacheAndReload()"
-                        class="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-xl font-bold text-zinc-300 hover:bg-zinc-700 transition-colors text-xs">🗑 Очистить</button>
-                </div>
-            </div>
-
-            <div class="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3">
-                <h3 class="text-sm font-bold border-b border-zinc-800 pb-2 text-white">Резервная копия</h3>
+            <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3">
+                <h3 class="text-sm font-bold border-b border-zinc-200 dark:border-zinc-800 pb-2 text-zinc-900 dark:text-white">Резервная копия</h3>
                 <div class="flex gap-2 text-xs">
-                    <button onclick="exportData()" class="flex-1 py-2.5 bg-zinc-800 border border-zinc-700 font-bold rounded-xl text-zinc-300 hover:bg-zinc-700 transition-colors">📦 Экспорт</button>
-                    <label class="flex-1 py-2.5 bg-zinc-800 border border-zinc-700 font-bold rounded-xl text-zinc-300 hover:bg-zinc-700 transition-colors text-center cursor-pointer">
+                    <button onclick="exportData()" class="flex-1 py-2.5 bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 font-bold rounded-xl text-zinc-800 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors">📦 Экспорт</button>
+                    <label class="flex-1 py-2.5 bg-zinc-100 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 font-bold rounded-xl text-zinc-800 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-center cursor-pointer">
                         📥 Импорт
                         <input type="file" accept=".json" class="hidden" onchange="importData(this)">
                     </label>
                 </div>
-                <button onclick="clearAllData()" class="py-2 text-xs font-bold text-red-400 hover:text-red-300 transition-colors">🗑 Очистить все данные</button>
             </div>
 
-            <!-- Telegram канал разработчика -->
-            <a href="https://t.me/cryptolaik" target="_blank" rel="noopener"
-                class="flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-2xl p-4 shadow-xl hover:border-zinc-700 transition-all active:scale-[0.98] group no-underline">
+            <a href="https://t.me/cryptolaik" target="_blank" rel="noopener" class="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 shadow-xl hover:border-zinc-300 dark:hover:border-zinc-700 transition-all active:scale-[0.98] no-underline">
                 <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(0,136,204,0.12)">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8l-1.68 7.94c-.13.58-.47.72-.95.45l-2.62-1.93-1.27 1.22c-.14.14-.26.26-.53.26l.19-2.7 4.9-4.43c.21-.19-.05-.29-.33-.1L7.28 14.4l-2.56-.8c-.56-.17-.57-.56.12-.83l10.01-3.86c.46-.17.87.11.79.89z" fill="#0088cc"/>
-                    </svg>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8l-1.68 7.94c-.13.58-.47.72-.95.45l-2.62-1.93-1.27 1.22c-.14.14-.26.26-.53.26l.19-2.7 4.9-4.43c.21-.19-.05-.29-.33-.1L7.28 14.4l-2.56-.8c-.56-.17-.57-.56.12-.83l10.01-3.86c.46-.17.87.11.79.89z" fill="#0088cc"/></svg>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-xs font-bold text-zinc-200 group-hover:text-white transition-colors">Канал разработчика</p>
-                    <p class="text-[11px] text-zinc-500 mt-0.5">@cryptolaik · обновления и новости</p>
+                    <p class="text-xs font-bold text-zinc-800 dark:text-zinc-200">Канал разработчика</p>
+                    <p class="text-[11px] text-zinc-500 mt-0.5">@cryptolaik</p>
                 </div>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-zinc-600 flex-shrink-0 group-hover:text-zinc-400 transition-colors">
-                    <path d="M9 18l6-6-6-6"/>
-                </svg>
             </a>
-
-            <p class="text-center text-[11px] text-zinc-700 pb-2">MindVault Pro · v2.1</p>
         </section>
     </main>
 
-    <!-- Нижняя навигация -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-800 z-40 nav-safe" role="navigation">
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800 z-40 nav-safe shadow-lg">
         <div class="max-w-md mx-auto flex justify-around items-center pt-2">
-            <button onclick="switchTab('notes')" id="nav-notes" class="nav-btn flex flex-col items-center gap-0.5 px-5 py-1.5 rounded-xl transition-all" aria-label="Заметки">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon transition-colors" style="color:var(--color-accent)">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
-                </svg>
-                <span class="text-[10px] font-bold transition-colors" style="color:var(--color-accent)">Заметки</span>
+            <button onclick="switchTab('notes')" id="nav-notes" class="nav-btn flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all text-accent">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                <span class="text-[10px] font-bold">Заметки</span>
             </button>
-            <button onclick="switchTab('crypto')" id="nav-crypto" class="nav-btn flex flex-col items-center gap-0.5 px-5 py-1.5 rounded-xl transition-all" aria-label="Сейф">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon text-zinc-500 transition-colors">
-                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                </svg>
-                <span class="text-[10px] font-bold text-zinc-500 transition-colors">Сейф</span>
+            <button onclick="switchTab('crypto')" id="nav-crypto" class="nav-btn flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all text-zinc-400 dark:text-zinc-500">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span class="text-[10px] font-bold">Сейф</span>
             </button>
-            <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn flex flex-col items-center gap-0.5 px-5 py-1.5 rounded-xl transition-all" aria-label="Настройки">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="nav-icon text-zinc-500 transition-colors">
-                    <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                </svg>
-                <span class="text-[10px] font-bold text-zinc-500 transition-colors">Опции</span>
+            <button onclick="switchTab('game')" id="nav-game" class="nav-btn flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all text-zinc-400 dark:text-zinc-500">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h4"/><path d="M8 10v4"/><circle cx="15" cy="13" r="1"/><circle cx="18" cy="11" r="1"/></svg>
+                <span class="text-[10px] font-bold">Отдых</span>
+            </button>
+            <button onclick="switchTab('settings')" id="nav-settings" class="nav-btn flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all text-zinc-400 dark:text-zinc-500">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="nav-icon"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <span class="text-[10px] font-bold">Опции</span>
             </button>
         </div>
     </nav>
@@ -343,650 +262,396 @@ let currentFilter = 'all';
 let activeTab = 'notes';
 let editingNoteId = null;
 let attachedImageBase64 = null;
-let swRegistration = null;
 let currentMasterKey = '';
 let vaultData = null;
-let vaultAttempts = 0;
-const MAX_VAULT_ATTEMPTS = 5;
-let vaultLockoutTimer = null;
-let vaultAutoLockTimer = null;
-const VAULT_AUTOLOCK_MS = 5 * 60 * 1000; // 5 минут
+let vaultType = 'pass'; 
 
 // ==================== ИНИЦИАЛИЗАЦИЯ ====================
 document.addEventListener('DOMContentLoaded', () => {
-    loadNotes();
     loadSettings();
+    loadNotes();
     renderNotes();
     initServiceWorker();
-    initCharCounter();
-    initPasswordStrength();
-    updateNotifStatus();
+    initGame(); // Запускаем игру в фоне
 });
 
 document.addEventListener('visibilitychange', () => {
-    if (document.hidden) resetVaultAutoLock();
+    if (document.hidden) lockVaultAutomatically();
 });
 
-// ==================== SERVICE WORKER ====================
+function lockVaultAutomatically() {
+    currentMasterKey = ''; document.getElementById('crypto-content').classList.add('hidden');
+    document.getElementById('crypto-auth').classList.remove('hidden'); document.getElementById('master-password').value = '';
+}
+
+// ==================== SERVICE WORKER & PUSH ====================
 async function initServiceWorker() {
-    if (!('serviceWorker' in navigator)) {
-        updateSwBadge(false);
-        return;
-    }
-    try {
-        swRegistration = await navigator.serviceWorker.register('./sw.js');
-        updateSwBadge(true);
-        // Пинг через небольшую задержку чтобы SW активировался
-        setTimeout(pingSW, 800);
-    } catch (err) {
-        console.warn('SW reg failed:', err);
-        updateSwBadge(false);
+    if ('serviceWorker' in navigator) {
+        try {
+            await navigator.serviceWorker.register('./sw.js');
+            document.getElementById('sw-badge').textContent = 'Push: Вкл';
+            document.getElementById('sw-badge').className = 'text-[10px] font-bold px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-500 border border-emerald-500/20';
+            document.getElementById('sw-status-text').textContent = 'Синхронизация активна';
+            if (Notification.permission === "default") Notification.requestPermission();
+        } catch (e) { console.warn(e); }
     }
 }
-
-function updateSwBadge(active) {
-    const badge = document.getElementById('sw-badge');
-    const text = document.getElementById('sw-status-text');
-    if (active) {
-        badge.textContent = 'Push: Вкл';
-        badge.className = 'text-[10px] font-bold px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
-        text.textContent = 'Фоновые уведомления активны';
-    } else {
-        badge.textContent = 'Push: Выкл';
-        badge.className = 'text-[10px] font-bold px-2 py-1 rounded-md bg-zinc-800 text-zinc-500 border border-zinc-700';
-        text.textContent = 'Service Worker недоступен';
-    }
-}
-
-function pingSW() {
-    if (navigator.serviceWorker.controller) {
-        navigator.serviceWorker.controller.postMessage({ action: 'ping' });
-    }
-}
-
-async function requestNotificationPermission() {
-    if (!('Notification' in window)) {
-        showToast('Браузер не поддерживает уведомления', '⚠️');
-        return;
-    }
-    const perm = await Notification.requestPermission();
-    updateNotifStatus();
-    if (perm === 'granted') showToast('Уведомления разрешены!', '🔔');
-    else showToast('Уведомления не разрешены', '❌');
-}
-
-function updateNotifStatus() {
-    const el = document.getElementById('notif-status-text');
-    const sw = document.getElementById('sw-detail-status');
-    if (!('Notification' in window)) { el.textContent = 'Не поддерживается'; return; }
-    const map = { granted: '✅ Разрешено', denied: '❌ Запрещено (сбросьте в браузере)', default: '⏸ Не задано — нажмите Запросить' };
-    el.textContent = map[Notification.permission] || '—';
-    if (sw) {
-        navigator.serviceWorker.getRegistration().then(reg => {
-            sw.textContent = reg ? ('✅ Активен · ' + (reg.active ? reg.active.scriptURL.split('/').pop() : '—')) : '❌ Не зарегистрирован';
-        });
-    }
-}
-
-async function sendTestNotification() {
-    if (Notification.permission !== 'granted') {
-        showToast('Сначала разрешите уведомления', '⚠️');
-        return;
-    }
-    const testTime = Date.now() + 5000;
-    sendToServiceWorker('test-' + Date.now(), '🧪 Тест MindVault — уведомления работают!', testTime);
-    showToast('Уведомление придёт через 5 сек', '🧪');
-}
-
-async function reregisterSW() {
-    showToast('Переустанавливаю SW...', '🔄');
-    try {
-        const regs = await navigator.serviceWorker.getRegistrations();
-        for (const reg of regs) await reg.unregister();
-        await initServiceWorker();
-        updateNotifStatus();
-        showToast('SW переустановлен!', '✅');
-    } catch (e) {
-        showToast('Ошибка: ' + e.message, '❌');
-    }
-}
-
-async function clearCacheAndReload() {
-    showToast('Очищаю кэш...', '🗑');
-    try {
-        // Удаляем все кэши SW
-        const keys = await caches.keys();
-        await Promise.all(keys.map(k => caches.delete(k)));
-        // Снимаем все SW
-        const regs = await navigator.serviceWorker.getRegistrations();
-        for (const reg of regs) await reg.unregister();
-    } catch (e) {}
-    // Жёсткая перезагрузка без кэша
-    setTimeout(() => location.reload(true), 500);
-}
-
 function sendToServiceWorker(id, text, timestamp) {
-    const send = () => {
-        if (navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({
-                action: 'schedule-notification', id: String(id), text, time: timestamp
-            });
-        }
-    };
-    if (navigator.serviceWorker.controller) { send(); return; }
-    // SW ещё не готов — ждём
-    navigator.serviceWorker.ready.then(() => send());
+    if (navigator.serviceWorker.controller) {
+        navigator.serviceWorker.controller.postMessage({ action: 'schedule-notification', id: String(id), text, time: timestamp });
+    }
 }
 
-// ==================== ЗАМЕТКИ ====================
-function loadNotes() {
-    try {
-        notes = JSON.parse(localStorage.getItem('mv_notes')) || [];
-    } catch { notes = []; }
+// ==================== ЗАМЕТКИ (MARKDOWN + ТЕГИ) ====================
+function loadNotes() { try { notes = JSON.parse(localStorage.getItem('mv_notes')) || []; } catch { notes = []; } }
+function saveNotesToStorage() { localStorage.setItem('mv_notes', JSON.stringify(notes)); }
+
+function escapeHTML(str) {
+    const div = document.createElement('div'); div.textContent = str; return div.innerHTML;
 }
 
-function saveNotesToStorage() {
-    localStorage.setItem('mv_notes', JSON.stringify(notes));
+// Умный парсер Markdown и хештегов
+function parseNoteText(text) {
+    let safe = escapeHTML(text);
+    safe = safe.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    safe = safe.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    // Делаем теги кликабельными
+    safe = safe.replace(/(^|\s)#([a-zA-Zа-яА-Я0-9_]+)/g, "$1<span class='font-bold cursor-pointer transition-colors' style='color:var(--color-accent)' onclick='filterByTag(\"#$2\")'>#$2</span>");
+    return safe.replace(/\n/g, '<br>');
 }
 
-function initCharCounter() {
-    const ta = document.getElementById('note-input');
-    const counter = document.getElementById('char-counter');
-    ta.addEventListener('input', () => {
-        counter.textContent = `${ta.value.length} / 2000`;
+function filterByTag(tag) {
+    currentFilter = tag;
+    // Сбрасываем визуально табы
+    document.querySelectorAll('.note-tab-btn').forEach(b => {
+        b.classList.remove('tab-active', 'border-transparent');
+        b.classList.add('bg-white', 'dark:bg-zinc-800', 'text-zinc-600', 'dark:text-zinc-400', 'border-zinc-200', 'dark:border-zinc-700');
+        b.style.backgroundColor = '';
     });
+    renderNotes();
+}
+
+function parseReminderDate(text) {
+    const clean = text.toLowerCase(); let date = new Date(); let hasDate = false;
+    if (clean.includes('сегодня')) hasDate = true;
+    else if (clean.includes('завтра')) { date.setDate(date.getDate() + 1); hasDate = true; }
+    else if (clean.includes('послезавтра')) { date.setDate(date.getDate() + 2); hasDate = true; }
+    else {
+        const days = ['воскресень', 'понедельник', 'вторник', 'сред', 'четверг', 'пятниц', 'суббот'];
+        for (let i = 0; i < 7; i++) {
+            if (clean.includes(days[i])) {
+                let dist = i - date.getDay(); if (dist <= 0) dist += 7;
+                date.setDate(date.getDate() + dist); hasDate = true; break;
+            }
+        }
+    }
+    const hard = text.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+    if (hard) { date = new Date(+hard[3], +hard[2] - 1, +hard[1]); hasDate = true; }
+    if (!hasDate) return null;
+    const time = clean.match(/(\d{1,2})[:h](\d{2})/);
+    if (time) date.setHours(+time[1], +time[2], 0, 0); else date.setHours(9, 0, 0, 0);
+    return date;
 }
 
 function previewImage(input) {
-    const file = input.files[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) { showToast('Выберите изображение', '⚠️'); input.value = ''; return; }
-    showToast('Сжимаю фото...', '🖼');
+    const file = input.files[0]; if (!file) return;
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = e => {
         const img = new Image();
         img.onload = () => {
-            const MAX = 1200;
-            let w = img.width, h = img.height;
-            if (w > MAX || h > MAX) {
-                if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-                else { w = Math.round(w * MAX / h); h = MAX; }
-            }
             const canvas = document.createElement('canvas');
-            canvas.width = w; canvas.height = h;
-            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            let base64 = canvas.toDataURL('image/jpeg', 0.75);
-            if (base64.length > 1.5 * 1024 * 1024) base64 = canvas.toDataURL('image/jpeg', 0.5);
-            if (base64.length > 1.5 * 1024 * 1024) base64 = canvas.toDataURL('image/jpeg', 0.3);
-            attachedImageBase64 = base64;
-            document.getElementById('image-preview').src = base64;
+            let w = img.width, h = img.height; const MAX = 1000;
+            if(w > MAX || h > MAX) { if(w > h){h=h*MAX/w;w=MAX;} else{w=w*MAX/h;h=MAX;} }
+            canvas.width = w; canvas.height = h; canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            attachedImageBase64 = canvas.toDataURL('image/jpeg', 0.6);
+            document.getElementById('image-preview').src = attachedImageBase64;
             document.getElementById('image-preview-container').classList.remove('hidden');
-            const kb = Math.round(base64.length * 0.75 / 1024);
-            showToast('Фото сжато · ' + kb + ' KB', '✅');
         };
         img.src = e.target.result;
     };
     reader.readAsDataURL(file);
 }
+function clearAttachedImage() { attachedImageBase64 = null; document.getElementById('note-image-input').value = ''; document.getElementById('image-preview-container').classList.add('hidden'); }
 
-function clearAttachedImage() {
-    attachedImageBase64 = null;
-    document.getElementById('note-image-input').value = '';
-    document.getElementById('image-preview-container').classList.add('hidden');
-}
-
-function openPhotoModal(src) {
-    const modal = document.getElementById('photo-modal');
-    document.getElementById('modal-img').src = src;
-    modal.classList.remove('hidden');
-    modal.classList.add('flex');
-}
-
-function closePhotoModal() {
-    const modal = document.getElementById('photo-modal');
-    modal.classList.add('hidden');
-    modal.classList.remove('flex');
-}
-
-// Безопасная вставка текста (защита от XSS)
-function escapeHTML(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
-
-function parseReminderDate(text) {
-    const clean = text.toLowerCase();
-    let date = new Date(); let hasDate = false;
-
-    if (clean.includes('сегодня')) { hasDate = true; }
-    else if (clean.includes('послезавтра')) { date.setDate(date.getDate() + 2); hasDate = true; }
-    else if (clean.includes('завтра')) { date.setDate(date.getDate() + 1); hasDate = true; }
-    else {
-        const days = ['воскресень', 'понедельник', 'вторник', 'сред', 'четверг', 'пятниц', 'суббот'];
-        for (let i = 0; i < days.length; i++) {
-            if (clean.includes(days[i])) {
-                const cur = date.getDay(); let dist = i - cur;
-                if (dist <= 0) dist += 7;
-                date.setDate(date.getDate() + dist); hasDate = true; break;
-            }
-        }
-    }
-
-    const hard = text.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
-    const short = text.match(/(\d{1,2})\.(\d{1,2})(?!\.\d)/);
-    if (hard) { date = new Date(+hard[3], +hard[2] - 1, +hard[1]); hasDate = true; }
-    else if (short) { date = new Date(date.getFullYear(), +short[2] - 1, +short[1]); hasDate = true; }
-
-    if (!hasDate) return null;
-
-    const timeMatch = clean.match(/(\d{1,2})[:h](\d{2})/);
-    if (timeMatch) date.setHours(+timeMatch[1], +timeMatch[2], 0, 0);
-    else date.setHours(9, 0, 0, 0);
-
-    return date;
-}
+function openPhotoModal(src) { document.getElementById('modal-img').src = src; document.getElementById('photo-modal').classList.remove('hidden'); document.getElementById('photo-modal').classList.add('flex'); }
+function closePhotoModal() { document.getElementById('photo-modal').classList.add('hidden'); document.getElementById('photo-modal').classList.remove('flex'); }
 
 function saveNote() {
     const text = document.getElementById('note-input').value.trim();
-    if (!text && !attachedImageBase64) { showToast('Заметка пустая!', '⚠️'); return; }
+    if (!text && !attachedImageBase64) { showToast('Пусто!', '⚠️'); return; }
 
-    const category = currentFilter === 'all' ? '💡 Мысли' : currentFilter;
-    const parsedDate = parseReminderDate(text);
-    const reminderLabel = parsedDate
-        ? parsedDate.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-        : null;
+    const cat = (currentFilter === 'all' || currentFilter.startsWith('#')) ? '💡 Мысли' : currentFilter;
+    const pDate = parseReminderDate(text);
+    const rem = pDate ? pDate.toLocaleString('ru', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : null;
 
-    if (editingNoteId !== null) {
-        notes = notes.map(n => n.id === editingNoteId
-            ? { ...n, text, category, reminder: reminderLabel, image: attachedImageBase64 !== null ? attachedImageBase64 : n.image }
-            : n
-        );
-        showToast('Изменения сохранены', '✏️');
-        cancelEdit();
+    if (editingNoteId) {
+        notes = notes.map(n => n.id === editingNoteId ? { ...n, text, category: cat, reminder: rem, image: attachedImageBase64 ?? n.image } : n);
+        cancelEdit(); showToast('Сохранено!', '✏️');
     } else {
-        const newNote = {
-            id: Date.now(),
-            text, category,
-            date: new Date().toLocaleDateString('ru-RU'),
-            reminder: reminderLabel,
-            image: attachedImageBase64
-        };
-        notes.unshift(newNote);
-        showToast(reminderLabel ? `Напоминание на ${reminderLabel}` : 'Сохранено!', reminderLabel ? '🔔' : '✅');
-
-        if (parsedDate && parsedDate > new Date()) {
-            if (Notification.permission !== 'granted') {
-                showToast('Разрешите уведомления для напоминаний', '⚠️');
-            } else {
-                sendToServiceWorker(newNote.id, text || 'Напоминание из MindVault', parsedDate.getTime());
-            }
-        }
+        const n = { id: Date.now(), text, category: cat, date: new Date().toLocaleDateString('ru'), reminder: rem, image: attachedImageBase64 };
+        notes.unshift(n); showToast('Сохранено!', '✅');
+        if (pDate && pDate > new Date()) sendToServiceWorker(n.id, text || 'Напоминание', pDate.getTime());
     }
-
-    saveNotesToStorage();
-    document.getElementById('note-input').value = '';
-    document.getElementById('char-counter').textContent = '0 / 2000';
-    clearAttachedImage();
-    renderNotes();
+    saveNotesToStorage(); document.getElementById('note-input').value = ''; clearAttachedImage(); renderNotes();
 }
 
 function editNote(id) {
-    const note = notes.find(n => n.id === id);
-    if (!note) return;
-    editingNoteId = id;
-    document.getElementById('note-input').value = note.text;
-    document.getElementById('char-counter').textContent = `${note.text.length} / 2000`;
-    if (note.image) {
-        attachedImageBase64 = note.image;
-        document.getElementById('image-preview').src = note.image;
-        document.getElementById('image-preview-container').classList.remove('hidden');
-    } else { clearAttachedImage(); }
+    const n = notes.find(x => x.id === id); if (!n) return;
+    editingNoteId = id; document.getElementById('note-input').value = n.text;
+    if (n.image) { attachedImageBase64 = n.image; document.getElementById('image-preview').src = n.image; document.getElementById('image-preview-container').classList.remove('hidden'); }
+    else clearAttachedImage();
     document.getElementById('edit-indicator').classList.remove('hidden');
-    document.getElementById('btn-save-note').textContent = 'Применить';
-    document.getElementById('note-input').focus();
-    document.getElementById('note-input').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    window.scrollTo(0, 0);
 }
-
-function cancelEdit() {
-    editingNoteId = null;
-    document.getElementById('note-input').value = '';
-    document.getElementById('char-counter').textContent = '0 / 2000';
-    document.getElementById('edit-indicator').classList.add('hidden');
-    document.getElementById('btn-save-note').textContent = 'Сохранить';
-    clearAttachedImage();
-}
-
-function deleteNote(id) {
-    if (!confirm('Удалить эту заметку?')) return;
-    if (editingNoteId === id) cancelEdit();
-    notes = notes.filter(n => n.id !== id);
-    saveNotesToStorage();
-    renderNotes();
-    showToast('Заметка удалена', '🗑');
-}
+function cancelEdit() { editingNoteId = null; document.getElementById('note-input').value = ''; document.getElementById('edit-indicator').classList.add('hidden'); clearAttachedImage(); }
+function deleteNote(id) { if(confirm('Удалить?')) { notes = notes.filter(n => n.id !== id); saveNotesToStorage(); renderNotes(); } }
 
 function renderNotes() {
-    const list = document.getElementById('notes-list');
-    list.innerHTML = '';
-    const filtered = currentFilter === 'all' ? notes : notes.filter(n => n.category === currentFilter);
+    const list = document.getElementById('notes-list'); list.innerHTML = '';
+    const filtered = currentFilter === 'all' ? notes : (currentFilter.startsWith('#') ? notes.filter(n => n.text.includes(currentFilter)) : notes.filter(n => n.category === currentFilter));
+    
+    if (filtered.length === 0) { list.innerHTML = `<div class="text-center py-8 text-zinc-500 text-xs">Ничего не найдено</div>`; return; }
 
-    if (filtered.length === 0) {
-        list.innerHTML = `<div class="text-center py-10 text-zinc-600 text-xs">Здесь пусто. Добавьте первую запись.</div>`;
-        return;
-    }
-
-    filtered.forEach(note => {
-        const isEditing = note.id === editingNoteId;
-        const card = document.createElement('div');
-        card.className = `bg-zinc-900 border ${isEditing ? 'border-amber-500 ring-1 ring-amber-500/30' : 'border-zinc-800'} rounded-xl p-3.5 flex flex-col gap-2 shadow-sm transition-all`;
-
-        const safeText = escapeHTML(note.text);
-        const safeCategory = escapeHTML(note.category);
-        const safeDate = escapeHTML(note.date);
-        const safeReminder = note.reminder ? escapeHTML(note.reminder) : null;
-
-        card.innerHTML = `
-            <div class="flex items-center justify-between gap-2">
-                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-400 border border-zinc-700 truncate max-w-[70%]">${safeCategory}</span>
-                <span class="text-[10px] text-zinc-600 flex-shrink-0">${safeDate}</span>
+    filtered.forEach(n => {
+        const isEd = n.id === editingNoteId;
+        const div = document.createElement('div');
+        div.className = `bg-white dark:bg-zinc-900 border ${isEd ? 'border-amber-500 ring-1 ring-amber-500/30' : 'border-zinc-200 dark:border-zinc-800'} rounded-xl p-3 flex flex-col gap-2 shadow-sm`;
+        div.innerHTML = `
+            <div class="flex items-center justify-between">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700">${n.category}</span>
+                <span class="text-[10px] text-zinc-500">${n.date}</span>
             </div>
-            ${note.image ? `<img src="${escapeHTML(note.image)}" alt="Вложение" class="w-full h-36 object-cover rounded-lg cursor-zoom-in border border-zinc-800 note-img">` : ''}
-            <p class="text-xs text-zinc-200 leading-relaxed break-words whitespace-pre-wrap pr-1">${safeText}</p>
-            ${safeReminder ? `<div class="text-[10px] font-semibold self-start px-2 py-0.5 rounded-md border" style="color:var(--color-accent);background:color-mix(in srgb,var(--color-accent) 10%,transparent);border-color:color-mix(in srgb,var(--color-accent) 25%,transparent)">🔔 ${safeReminder}</div>` : ''}
-            <div class="flex items-center justify-end gap-1.5 pt-1 border-t border-zinc-800/60 mt-0.5">
-                <button class="btn-edit flex items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-amber-400 px-2.5 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors" aria-label="Редактировать">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    Изменить
-                </button>
-                <div class="w-px h-4 bg-zinc-800"></div>
-                <button class="btn-del flex items-center gap-1 text-[11px] font-medium text-zinc-500 hover:text-red-400 px-2.5 py-1.5 rounded-lg hover:bg-zinc-800 transition-colors" aria-label="Удалить">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-                    Удалить
-                </button>
+            ${n.image ? `<img src="${n.image}" onclick="openPhotoModal('${n.image}')" class="w-full h-32 object-cover rounded-lg border border-zinc-200 dark:border-zinc-800">` : ''}
+            <div class="text-xs text-zinc-800 dark:text-zinc-200 leading-relaxed">${parseNoteText(n.text)}</div>
+            ${n.reminder ? `<div class="text-[10px] font-semibold text-amber-500 mt-1">🔔 ${n.reminder}</div>` : ''}
+            <div class="flex gap-2 justify-end mt-1">
+                <button onclick="editNote(${n.id})" class="text-zinc-400 hover:text-amber-500 px-1 text-xs">✏️</button>
+                <button onclick="deleteNote(${n.id})" class="text-zinc-400 hover:text-red-500 px-1 text-xs">🗑</button>
             </div>`;
-
-        card.querySelector('.btn-edit').addEventListener('click', () => editNote(note.id));
-        card.querySelector('.btn-del').addEventListener('click', () => deleteNote(note.id));
-        if (note.image) {
-            card.querySelector('.note-img').addEventListener('click', () => openPhotoModal(note.image));
-        }
-        list.appendChild(card);
+        list.appendChild(div);
     });
 }
 
 function filterNotes(cat, btn) {
     currentFilter = cat;
-    document.querySelectorAll('[data-tab-btn]').forEach(b => {
-        b.classList.remove('tab-active');
-        b.className = b.className.replace('text-white', '').trim();
-        b.classList.add('bg-zinc-800', 'text-zinc-400');
+    document.querySelectorAll('.note-tab-btn').forEach(b => {
+        b.classList.remove('tab-active', 'border-transparent');
+        b.classList.add('bg-white', 'dark:bg-zinc-800', 'text-zinc-600', 'dark:text-zinc-400', 'border-zinc-200', 'dark:border-zinc-700');
+        b.style.backgroundColor = '';
     });
-    btn.classList.add('tab-active');
-    btn.classList.remove('bg-zinc-800', 'text-zinc-400');
+    if(btn) {
+        btn.classList.add('tab-active', 'border-transparent');
+        btn.classList.remove('bg-white', 'dark:bg-zinc-800', 'text-zinc-600', 'dark:text-zinc-400');
+        btn.style.backgroundColor = 'var(--color-accent)';
+    }
     renderNotes();
 }
 
-// ==================== СЕЙФ ====================
-
-// PBKDF2 для усиления мастер-пароля
-function deriveKey(password, salt) {
-    return CryptoJS.PBKDF2(password, salt, {
-        keySize: 256 / 32,
-        iterations: 10000,
-        hasher: CryptoJS.algo.SHA256
-    }).toString();
-}
-
-function getOrCreateSalt() {
-    let salt = localStorage.getItem('mv_salt');
-    if (!salt) {
-        salt = CryptoJS.lib.WordArray.random(128 / 8).toString();
-        localStorage.setItem('mv_salt', salt);
+// ==================== СЕЙФ (SEED + PASS) ====================
+function setVaultType(type) {
+    vaultType = type;
+    document.getElementById('form-pass').classList.toggle('hidden', type !== 'pass');
+    document.getElementById('form-seed').classList.toggle('hidden', type !== 'seed');
+    
+    const bPass = document.getElementById('vt-pass');
+    const bSeed = document.getElementById('vt-seed');
+    if (type === 'pass') {
+        bPass.className = "flex-1 py-1.5 rounded-lg bg-white dark:bg-zinc-800 shadow text-zinc-900 dark:text-white font-semibold transition-all";
+        bSeed.className = "flex-1 py-1.5 rounded-lg text-zinc-500 font-semibold transition-all hover:bg-zinc-200 dark:hover:bg-zinc-800";
+    } else {
+        bSeed.className = "flex-1 py-1.5 rounded-lg bg-white dark:bg-zinc-800 shadow text-zinc-900 dark:text-white font-semibold transition-all";
+        bPass.className = "flex-1 py-1.5 rounded-lg text-zinc-500 font-semibold transition-all hover:bg-zinc-200 dark:hover:bg-zinc-800";
     }
-    return salt;
 }
 
 function unlockVault() {
-    if (vaultLockoutTimer) { showToast('Сейф временно заблокирован', '🔒'); return; }
-
-    const pass = document.getElementById('master-password').value;
-    if (!pass) { showToast('Введите пароль', '⚠️'); return; }
-    if (pass.length < 4) { showToast('Пароль слишком короткий', '⚠️'); return; }
-
-    const salt = getOrCreateSalt();
-    const derivedKey = deriveKey(pass, salt);
-    vaultData = localStorage.getItem('mv_vault') || null;
-
+    const pass = document.getElementById('master-password').value; if (!pass) return;
+    currentMasterKey = CryptoJS.SHA256(pass).toString(); vaultData = localStorage.getItem('mv_vault');
     if (vaultData) {
-        try {
-            const bytes = CryptoJS.AES.decrypt(vaultData, derivedKey);
-            const decoded = bytes.toString(CryptoJS.enc.Utf8);
-            if (!decoded) throw new Error('Bad decrypt');
-            JSON.parse(decoded); // Проверка JSON валидности
-        } catch {
-            vaultAttempts++;
-            const left = MAX_VAULT_ATTEMPTS - vaultAttempts;
-            document.getElementById('vault-attempts-left').textContent = left;
+        try { const bytes = CryptoJS.AES.decrypt(vaultData, currentMasterKey); if (!bytes.toString(CryptoJS.enc.Utf8)) throw new Error(); } 
+        catch (e) { showToast("Неверный пароль!", "❌"); currentMasterKey = ""; return; }
+    } else { vaultData = CryptoJS.AES.encrypt("[]", currentMasterKey).toString(); localStorage.setItem('mv_vault', vaultData); }
+    document.getElementById('crypto-auth').classList.add('hidden'); document.getElementById('crypto-content').classList.remove('hidden'); renderVault();
+}
 
-            if (vaultAttempts >= MAX_VAULT_ATTEMPTS) {
-                startVaultLockout();
-            } else {
-                showToast(`Неверный пароль. Осталось попыток: ${left}`, '❌');
-            }
-            document.getElementById('master-password').value = '';
-            return;
-        }
+function toggleFieldType(id) { const el = document.getElementById(id); el.type = el.type === 'password' ? 'text' : 'password'; }
+function generateSecurePassword() { const c = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789!@#$%^&*"; let p = ""; for(let i=0;i<16;i++) p+=c.charAt(Math.floor(Math.random()*c.length)); document.getElementById('pw-value').value = p; document.getElementById('pw-value').type = 'text'; }
+async function pasteFromClipboard(id) { try { document.getElementById(id).value = await navigator.clipboard.readText(); } catch(e){showToast("Нет доступа к буферу", "⚠️")} }
+
+function saveVaultEntry() {
+    let title, val, login = "";
+    if (vaultType === 'pass') {
+        title = document.getElementById('pw-title').value; login = document.getElementById('pw-login').value; val = document.getElementById('pw-value').value;
     } else {
-        // Первый запуск — создать пустое хранилище
-        vaultData = CryptoJS.AES.encrypt(JSON.stringify([]), derivedKey).toString();
-        localStorage.setItem('mv_vault', vaultData);
+        title = document.getElementById('seed-title').value; val = document.getElementById('seed-value').value;
     }
+    if(!title || !val) { showToast("Заполните поля", "⚠️"); return; }
 
-    currentMasterKey = derivedKey;
-    vaultAttempts = 0;
-    document.getElementById('vault-attempts-left').textContent = MAX_VAULT_ATTEMPTS;
-    document.getElementById('crypto-auth').classList.add('hidden');
-    document.getElementById('crypto-content').classList.remove('hidden');
-    renderPasswords();
-    startVaultAutoLock();
+    const list = JSON.parse(CryptoJS.AES.decrypt(vaultData, currentMasterKey).toString(CryptoJS.enc.Utf8));
+    list.push({ id: Date.now(), type: vaultType, title, login, val });
+    vaultData = CryptoJS.AES.encrypt(JSON.stringify(list), currentMasterKey).toString(); localStorage.setItem('mv_vault', vaultData);
+    document.getElementById('pw-title').value=''; document.getElementById('pw-login').value=''; document.getElementById('pw-value').value=''; document.getElementById('seed-title').value=''; document.getElementById('seed-value').value='';
+    showToast("Зашифровано!", "🛡"); renderVault();
 }
 
-function startVaultLockout() {
-    let seconds = 30;
-    document.getElementById('vault-lockout-msg').classList.remove('hidden');
-    document.getElementById('btn-unlock').disabled = true;
-    document.getElementById('lockout-countdown').textContent = seconds;
-
-    vaultLockoutTimer = setInterval(() => {
-        seconds--;
-        document.getElementById('lockout-countdown').textContent = seconds;
-        if (seconds <= 0) {
-            clearInterval(vaultLockoutTimer);
-            vaultLockoutTimer = null;
-            vaultAttempts = 0;
-            document.getElementById('vault-attempts-left').textContent = MAX_VAULT_ATTEMPTS;
-            document.getElementById('vault-lockout-msg').classList.add('hidden');
-            document.getElementById('btn-unlock').disabled = false;
-        }
-    }, 1000);
-    showToast('Сейф заблокирован на 30 секунд', '🔒');
-}
-
-function startVaultAutoLock() {
-    resetVaultAutoLock();
-    const badge = document.getElementById('lock-timer-badge');
-    badge.classList.remove('hidden');
-
-    let remaining = VAULT_AUTOLOCK_MS / 1000;
-    const tick = () => {
-        remaining--;
-        const m = Math.floor(remaining / 60);
-        const s = remaining % 60;
-        badge.textContent = `🔓 ${m}:${s.toString().padStart(2, '0')}`;
-        if (remaining <= 0) lockVault();
-    };
-    tick();
-    vaultAutoLockTimer = setInterval(tick, 1000);
-}
-
-function resetVaultAutoLock() {
-    if (vaultAutoLockTimer) { clearInterval(vaultAutoLockTimer); vaultAutoLockTimer = null; }
-}
-
-function lockVault() {
-    resetVaultAutoLock();
-    currentMasterKey = '';
-    vaultData = null;
-    document.getElementById('crypto-content').classList.add('hidden');
-    document.getElementById('crypto-auth').classList.remove('hidden');
-    document.getElementById('master-password').value = '';
-    document.getElementById('lock-timer-badge').classList.add('hidden');
-}
-
-function toggleFieldType(id) {
-    const el = document.getElementById(id);
-    el.type = el.type === 'password' ? 'text' : 'password';
-}
-
-const CHARSET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
-function generateSecurePassword() {
-    let pass = '';
-    const arr = new Uint8Array(16);
-    crypto.getRandomValues(arr);
-    arr.forEach(b => { pass += CHARSET[b % CHARSET.length]; });
-    document.getElementById('pw-value').value = pass;
-    document.getElementById('pw-value').type = 'text';
-    updatePasswordStrength();
-    showToast('Пароль сгенерирован', '⚡');
-}
-
-async function pasteFromClipboard() {
-    try {
-        const text = await navigator.clipboard.readText();
-        document.getElementById('pw-value').value = text;
-        updatePasswordStrength();
-    } catch { showToast('Нет доступа к буферу', '⚠️'); }
-}
-
-function initPasswordStrength() {
-    document.getElementById('pw-value').addEventListener('input', updatePasswordStrength);
-}
-
-function updatePasswordStrength() {
-    const val = document.getElementById('pw-value').value;
-    let score = 0;
-    if (val.length >= 8) score++;
-    if (val.length >= 12) score++;
-    if (/[A-Z]/.test(val) && /[a-z]/.test(val)) score++;
-    if (/[0-9]/.test(val) && /[^a-zA-Z0-9]/.test(val)) score++;
-    const colors = ['#3f3f46', '#ef4444', '#f97316', '#eab308', '#22c55e'];
-    for (let i = 1; i <= 4; i++) {
-        document.getElementById(`pws-${i}`).style.background = i <= score ? colors[score] : '#3f3f46';
-    }
-}
-
-function savePassword() {
-    const title = document.getElementById('pw-title').value.trim();
-    const login = document.getElementById('pw-login').value.trim();
-    const val = document.getElementById('pw-value').value;
-    if (!title || !val) { showToast('Заполните ресурс и пароль', '⚠️'); return; }
-    if (!currentMasterKey) { showToast('Сейф не открыт', '⚠️'); return; }
-
-    try {
-        const bytes = CryptoJS.AES.decrypt(vaultData, currentMasterKey);
-        const list = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-        list.push({ id: Date.now(), title, login, val });
-        vaultData = CryptoJS.AES.encrypt(JSON.stringify(list), currentMasterKey).toString();
-        localStorage.setItem('mv_vault', vaultData);
-        document.getElementById('pw-title').value = '';
-        document.getElementById('pw-login').value = '';
-        document.getElementById('pw-value').value = '';
-        updatePasswordStrength();
-        renderPasswords();
-        showToast('Запись сохранена', '✅');
-        startVaultAutoLock(); // Сброс таймера при активности
-    } catch { showToast('Ошибка сохранения', '❌'); }
-}
-
-function deletePassword(id) {
-    if (!confirm('Удалить эту запись?')) return;
-    try {
-        const bytes = CryptoJS.AES.decrypt(vaultData, currentMasterKey);
-        let list = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-        list = list.filter(p => p.id !== id);
-        vaultData = CryptoJS.AES.encrypt(JSON.stringify(list), currentMasterKey).toString();
-        localStorage.setItem('mv_vault', vaultData);
-        renderPasswords();
-    } catch { showToast('Ошибка удаления', '❌'); }
-}
-
-function renderPasswords() {
-    const list = document.getElementById('passwords-list');
-    list.innerHTML = '';
-    if (!vaultData || !currentMasterKey) return;
-    try {
-        const bytes = CryptoJS.AES.decrypt(vaultData, currentMasterKey);
-        const arr = JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
-        if (arr.length === 0) {
-            list.innerHTML = '<div class="text-center py-6 text-zinc-600 text-xs">Сейф пуст. Добавьте первую запись.</div>';
-            return;
-        }
-        arr.forEach(p => {
-            const row = document.createElement('div');
-            row.className = 'bg-zinc-950 border border-zinc-800 rounded-xl p-3 flex items-center justify-between gap-2 text-xs';
-            row.innerHTML = `
-                <div class="flex-1 min-w-0">
-                    <p class="font-semibold text-zinc-200 truncate">${escapeHTML(p.title)}</p>
-                    ${p.login ? `<p class="text-zinc-500 text-[11px] truncate">${escapeHTML(p.login)}</p>` : ''}
+function renderVault() {
+    const list = document.getElementById('passwords-list'); list.innerHTML = "";
+    const arr = JSON.parse(CryptoJS.AES.decrypt(vaultData, currentMasterKey).toString(CryptoJS.enc.Utf8));
+    arr.forEach(p => {
+        const isSeed = p.type === 'seed';
+        list.innerHTML += `
+        <div class="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 flex flex-col gap-1 text-xs shadow-sm">
+            <div class="flex justify-between items-start">
+                <div>
+                    <span class="text-[10px] font-bold px-1.5 py-0.5 bg-zinc-200 dark:bg-zinc-800 rounded text-zinc-500">${isSeed ? 'Seed' : 'Pass'}</span>
+                    <span class="font-bold text-zinc-900 dark:text-zinc-100 ml-1">${escapeHTML(p.title)}</span>
+                    ${p.login ? `<div class="text-[10px] text-zinc-500 mt-1">${escapeHTML(p.login)}</div>` : ''}
                 </div>
-                <div class="flex gap-1.5 flex-shrink-0">
-                    <button class="btn-copy px-2 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-cyan-400 font-semibold transition-colors">Копировать</button>
-                    <button class="btn-del-pw px-2 py-1.5 bg-zinc-800 hover:bg-red-500/20 rounded-lg text-zinc-500 hover:text-red-400 transition-colors">✕</button>
-                </div>`;
-            row.querySelector('.btn-copy').addEventListener('click', () => {
-                navigator.clipboard.writeText(p.val).then(() => showToast('Пароль скопирован', '📋'));
-            });
-            row.querySelector('.btn-del-pw').addEventListener('click', () => deletePassword(p.id));
-            list.appendChild(row);
-        });
-    } catch { showToast('Ошибка чтения сейфа', '❌'); }
+                <button onclick="navigator.clipboard.writeText('${p.val}')" class="text-cyan-500 hover:text-cyan-600 bg-cyan-500/10 px-2 py-1 rounded">Копировать</button>
+            </div>
+            ${isSeed ? 
+                `<textarea readonly class="w-full bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 mt-2 p-2 rounded-lg border border-zinc-200 dark:border-zinc-800 h-16 resize-none outline-none font-mono text-[10px]">${p.val}</textarea>` 
+                : 
+                `<input type="password" id="h-${p.id}" value="${p.val}" readonly onclick="toggleFieldType('h-${p.id}')" class="w-full bg-transparent text-cyan-500 font-mono mt-1 outline-none">`
+            }
+            <button onclick="deleteVaultEntry(${p.id})" class="text-red-400 self-end mt-1 px-1">Удалить</button>
+        </div>`;
+    });
+}
+function deleteVaultEntry(id) {
+    if(!confirm("Удалить?")) return;
+    let arr = JSON.parse(CryptoJS.AES.decrypt(vaultData, currentMasterKey).toString(CryptoJS.enc.Utf8));
+    arr = arr.filter(x => x.id !== id);
+    vaultData = CryptoJS.AES.encrypt(JSON.stringify(arr), currentMasterKey).toString(); localStorage.setItem('mv_vault', vaultData); renderVault();
 }
 
-// ==================== НАВИГАЦИЯ ====================
+// ==================== ИГРА 3-В-РЯД ====================
+const gameGrid = document.getElementById('game-board');
+const width = 8; const squares = []; let gameScore = 0; let gameLevel = 1;
+const candyColors = ['🔴', '🟡', '🟢', '🔵', '🟣', '💎'];
+let selectedCandyId = null;
+
+function initGame() {
+    for (let i = 0; i < width * width; i++) {
+        const square = document.createElement('div');
+        square.classList.add('candy'); square.setAttribute('id', 'g-'+i);
+        square.innerHTML = candyColors[Math.floor(Math.random() * candyColors.length)];
+        square.addEventListener('click', handleCandyClick);
+        gameGrid.appendChild(square); squares.push(square);
+    }
+    // Авточистка стартовых совпадений
+    let hasMatches = true;
+    while(hasMatches) { hasMatches = checkMatchesSilent(); }
+}
+
+function handleCandyClick() {
+    let id = parseInt(this.id.replace('g-',''));
+    if (selectedCandyId === null) {
+        selectedCandyId = id; this.classList.add('selected');
+    } else {
+        squares[selectedCandyId].classList.remove('selected');
+        let validMoves = [selectedCandyId - 1, selectedCandyId - width, selectedCandyId + 1, selectedCandyId + width];
+        let isRightEdge = selectedCandyId % width === width - 1;
+        let isLeftEdge = selectedCandyId % width === 0;
+        if (isRightEdge && id === selectedCandyId + 1) validMoves = [];
+        if (isLeftEdge && id === selectedCandyId - 1) validMoves = [];
+
+        if (validMoves.includes(id)) {
+            // Swap
+            let colorA = this.innerHTML; let colorB = squares[selectedCandyId].innerHTML;
+            this.innerHTML = colorB; squares[selectedCandyId].innerHTML = colorA;
+            
+            // Check match
+            let isMatch = checkMatches();
+            if (!isMatch) { setTimeout(() => { this.innerHTML = colorA; squares[selectedCandyId].innerHTML = colorB; }, 200); }
+        }
+        selectedCandyId = null;
+    }
+}
+
+function checkMatchesSilent() {
+    let matched = false;
+    for (let i = 0; i < 64; i++) {
+        // Row
+        if (i % width < 6) {
+            let row = [i, i+1, i+2]; let color = squares[i].innerHTML;
+            if (color && row.every(idx => squares[idx].innerHTML === color)) {
+                row.forEach(idx => squares[idx].innerHTML = candyColors[Math.floor(Math.random()*candyColors.length)]);
+                matched = true;
+            }
+        }
+        // Col
+        if (i < 48) {
+            let col = [i, i+width, i+width*2]; let color = squares[i].innerHTML;
+            if (color && col.every(idx => squares[idx].innerHTML === color)) {
+                col.forEach(idx => squares[idx].innerHTML = candyColors[Math.floor(Math.random()*candyColors.length)]);
+                matched = true;
+            }
+        }
+    }
+    return matched;
+}
+
+function checkMatches() {
+    let matched = false;
+    for (let i = 0; i < 64; i++) {
+        if (i % width < 6) {
+            let row = [i, i+1, i+2]; let color = squares[i].innerHTML;
+            if (color !== '' && row.every(idx => squares[idx].innerHTML === color)) {
+                gameScore += 3; row.forEach(idx => squares[idx].innerHTML = ''); matched = true;
+            }
+        }
+        if (i < 48) {
+            let col = [i, i+width, i+width*2]; let color = squares[i].innerHTML;
+            if (color !== '' && col.every(idx => squares[idx].innerHTML === color)) {
+                gameScore += 3; col.forEach(idx => squares[idx].innerHTML = ''); matched = true;
+            }
+        }
+    }
+    if (matched) {
+        document.getElementById('game-score').textContent = gameScore;
+        if (gameScore > gameLevel * 50) { gameLevel++; document.getElementById('game-level').textContent = gameLevel; }
+        setTimeout(moveDown, 150);
+    }
+    return matched;
+}
+
+function moveDown() {
+    for (let i = 0; i < 56; i++) {
+        if (squares[i + width].innerHTML === '') {
+            squares[i + width].innerHTML = squares[i].innerHTML;
+            squares[i].innerHTML = '';
+        }
+    }
+    for (let i = 0; i < width; i++) {
+        if (squares[i].innerHTML === '') squares[i].innerHTML = candyColors[Math.floor(Math.random() * candyColors.length)];
+    }
+    setTimeout(() => { if(checkMatches()) moveDown(); }, 150);
+}
+
+// ==================== НАСТРОЙКИ & UI ====================
 function switchTab(tab) {
     activeTab = tab;
-    ['notes', 'crypto', 'settings'].forEach(t => {
-        document.getElementById(`section-${t}`).classList.toggle('hidden', t !== tab);
-    });
-    updateNavStyles();
-}
-
-function updateNavStyles() {
-    const tabs = {
-        notes: { color: 'var(--color-accent)', label: 'Заметки' },
-        crypto: { color: '#06b6d4', label: 'Сейф' },
-        settings: { color: '#a1a1aa', label: 'Опции' }
-    };
-    ['notes', 'crypto', 'settings'].forEach(t => {
+    ['notes', 'crypto', 'game', 'settings'].forEach(t => document.getElementById(`section-${t}`).classList.toggle('hidden', t !== tab));
+    
+    // Обновляем цвета иконок в таббаре
+    ['notes', 'crypto', 'game', 'settings'].forEach(t => {
         const btn = document.getElementById(`nav-${t}`);
         const icon = btn.querySelector('.nav-icon');
-        const label = btn.querySelector('span');
-        const isActive = t === activeTab;
-        icon.style.color = isActive ? tabs[t].color : '#52525b';
-        label.style.color = isActive ? tabs[t].color : '#52525b';
-        label.style.fontWeight = isActive ? '700' : '600';
+        const text = btn.querySelector('span');
+        if (t === tab) {
+            btn.classList.add(t==='notes'?'text-accent':(t==='crypto'?'text-crypto':(t==='game'?'text-amber-500':'text-zinc-900')));
+            if(t==='settings') btn.classList.add('dark:text-white');
+            btn.classList.remove('text-zinc-400', 'dark:text-zinc-500');
+        } else {
+            btn.className = "nav-btn flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all text-zinc-400 dark:text-zinc-500";
+        }
     });
 }
 
-// ==================== НАСТРОЙКИ ====================
 function toggleTheme() {
-    const html = document.documentElement;
-    const isDark = html.classList.contains('dark');
-    html.classList.toggle('dark', !isDark);
-    html.classList.toggle('light', isDark);
-    document.body.style.backgroundColor = isDark ? '#f4f4f5' : '';
-    document.body.style.color = isDark ? '#18181b' : '';
+    const html = document.documentElement; const isDark = html.classList.contains('dark');
+    html.classList.toggle('dark', !isDark); html.classList.toggle('light', isDark);
     localStorage.setItem('mv_theme', isDark ? 'light' : 'dark');
     document.getElementById('theme-toggle-btn').textContent = isDark ? '🌙 Тёмная' : '☀️ Светлая';
 }
@@ -994,112 +659,56 @@ function toggleTheme() {
 function setAccentColor(primary, hover, btn) {
     document.documentElement.style.setProperty('--color-accent', primary);
     document.documentElement.style.setProperty('--color-accent-hover', hover);
-    localStorage.setItem('mv_accent', JSON.stringify({ primary, hover }));
+    localStorage.setItem('mv_accent', JSON.stringify({primary, hover}));
     document.querySelectorAll('[data-color-btn]').forEach(b => {
-        b.style.borderColor = '#52525b';
-        b.style.transform = '';
+        b.style.borderColor = 'transparent'; b.style.transform = ''; b.classList.remove('ring-4');
     });
-    if (btn) { btn.style.borderColor = 'white'; btn.style.transform = 'scale(1.15)'; }
-    updateNavStyles();
-    // Обновить активную кнопку фильтра
+    if (btn) { btn.style.borderColor = '#fff'; btn.classList.add('ring-4'); btn.style.transform = 'scale(1.1)'; }
+    
     const activeFilter = document.querySelector('.note-tab-btn.tab-active');
     if (activeFilter) activeFilter.style.backgroundColor = primary;
 }
 
 function loadSettings() {
-    // Акцент
     try {
         const saved = JSON.parse(localStorage.getItem('mv_accent'));
         if (saved?.primary) {
             document.documentElement.style.setProperty('--color-accent', saved.primary);
             document.documentElement.style.setProperty('--color-accent-hover', saved.hover);
-            const btn = Array.from(document.querySelectorAll('[data-color-btn]'))
-                .find(b => b.style.background === saved.primary || getComputedStyle(b).backgroundColor);
-            // Найдём кнопку по onclick
-            document.querySelectorAll('[data-color-btn]').forEach(b => {
-                if (b.getAttribute('onclick').includes(saved.primary)) {
-                    b.style.borderColor = 'white';
-                    b.style.transform = 'scale(1.15)';
-                }
-            });
+            setTimeout(() => {
+                const btn = Array.from(document.querySelectorAll('[data-color-btn]')).find(b => b.getAttribute('onclick').includes(saved.primary));
+                if(btn) { btn.style.borderColor = '#fff'; btn.classList.add('ring-4'); btn.style.transform = 'scale(1.1)'; }
+            }, 100);
         }
     } catch {}
-    // Тема
-    const theme = localStorage.getItem('mv_theme');
-    if (theme === 'light') {
-        document.documentElement.classList.remove('dark');
-        document.documentElement.classList.add('light');
+    if (localStorage.getItem('mv_theme') === 'light') {
+        document.documentElement.classList.remove('dark'); document.documentElement.classList.add('light');
         document.getElementById('theme-toggle-btn').textContent = '🌙 Тёмная';
     }
 }
 
-// ==================== BACKUP ====================
 function exportData() {
-    const data = {
-        version: 2,
-        exportedAt: new Date().toISOString(),
-        notes: notes,
-        vault: localStorage.getItem('mv_vault'),
-        salt: localStorage.getItem('mv_salt')
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `mindvault-backup-${new Date().toISOString().slice(0,10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('Резервная копия сохранена', '📦');
+    const data = { notes, vault: localStorage.getItem('mv_vault') };
+    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `backup.json`; a.click();
 }
-
 function importData(input) {
-    const file = input.files[0];
-    if (!file) return;
+    const f = input.files[0]; if (!f) return;
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = e => {
         try {
-            const data = JSON.parse(e.target.result);
-            if (!data.notes) throw new Error('Bad format');
-            if (!confirm(`Импортировать ${data.notes.length} заметок? Текущие данные будут заменены.`)) return;
-            notes = data.notes;
-            saveNotesToStorage();
-            if (data.vault) localStorage.setItem('mv_vault', data.vault);
-            if (data.salt) localStorage.setItem('mv_salt', data.salt);
-            renderNotes();
-            showToast('Данные импортированы', '✅');
-        } catch { showToast('Ошибка чтения файла', '❌'); }
-    };
-    reader.readAsText(file);
-    input.value = '';
+            const data = JSON.parse(e.target.result); notes = data.notes || []; localStorage.setItem('mv_notes', JSON.stringify(notes));
+            if(data.vault) localStorage.setItem('mv_vault', data.vault);
+            renderNotes(); showToast("Восстановлено!", "✅");
+        } catch { showToast("Ошибка файла", "❌"); }
+    }; reader.readAsText(f);
 }
 
-function clearAllData() {
-    if (!confirm('Удалить ВСЕ заметки и данные сейфа? Это действие необратимо.')) return;
-    localStorage.removeItem('mv_notes');
-    localStorage.removeItem('mv_vault');
-    localStorage.removeItem('mv_salt');
-    notes = [];
-    vaultData = null;
-    currentMasterKey = '';
-    lockVault();
-    renderNotes();
-    showToast('Все данные удалены', '🗑');
-}
-
-// ==================== TOAST ====================
-let toastTimer = null;
-function showToast(msg, icon = '') {
-    const t = document.getElementById('toast');
-    document.getElementById('toast-icon').textContent = icon;
-    document.getElementById('toast-text').textContent = msg;
-    t.classList.remove('hidden', 'toast-hide');
-    t.classList.add('toast-show');
-    if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => {
-        t.classList.remove('toast-show');
-        t.classList.add('toast-hide');
-        setTimeout(() => t.classList.add('hidden'), 250);
-    }, 2800);
+let toastTimer;
+function showToast(msg, icon='') {
+    const t = document.getElementById('toast'); document.getElementById('toast-icon').textContent = icon; document.getElementById('toast-text').textContent = msg;
+    t.classList.remove('hidden', 'toast-hide'); t.classList.add('toast-show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.classList.replace('toast-show', 'toast-hide'); setTimeout(() => t.classList.add('hidden'), 250); }, 2800);
 }
 </script>
 </body>
