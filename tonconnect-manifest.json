@@ -1,7 +1,7 @@
 {
-  "url": "http://localhost:3000",
+  "url": "https://p2p-exchange-9s2qj4mao-linom2020s-projects.vercel.app",
   "name": "TON P2P Escrow",
   "iconUrl": "https://ton.org/download/ton_symbol.png",
-  "termsOfUseUrl": "http://localhost:3000",
-  "privacyPolicyUrl": "http://localhost:3000"
+  "termsOfUseUrl": "https://p2p-exchange-9s2qj4mao-linom2020s-projects.vercel.app",
+  "privacyPolicyUrl": "https://p2p-exchange-9s2qj4mao-linom2020s-projects.vercel.app"
 }
