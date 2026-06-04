@@ -1,5 +1,7 @@
 {
   "url": "http://localhost:3000",
   "name": "TON P2P Escrow",
-  "iconUrl": "https://ton.org/download/ton_symbol.png"
+  "iconUrl": "https://ton.org/download/ton_symbol.png",
+  "termsOfUseUrl": "http://localhost:3000",
+  "privacyPolicyUrl": "http://localhost:3000"
 }
